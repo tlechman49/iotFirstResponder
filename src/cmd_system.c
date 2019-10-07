@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-#include "esp_log.h"
+// #include "esp_log.h"
 #include "esp_console.h"
 #include "esp_system.h"
 #include "esp_sleep.h"
@@ -21,12 +21,11 @@
 #include "cmd_system.h"
 #include "sdkconfig.h"
 
-
 #ifdef CONFIG_FREERTOS_USE_STATS_FORMATTING_FUNCTIONS
 #define WITH_TASKS_INFO 1
 #endif
 
-static const char *TAG = "cmd_system";
+// static const char *TAG = "cmd_system";
 
 static void register_free(void);
 static void register_heap(void);
@@ -85,7 +84,7 @@ static void register_version(void)
 
 static int restart(int argc, char **argv)
 {
-    ESP_LOGI(TAG, "Restarting");
+    // ESP_LOGI(TAG, "Restarting");
     esp_restart();
 }
 
@@ -123,7 +122,7 @@ static void register_free(void)
 static int heap_size(int argc, char **argv)
 {
     uint32_t heap_size = heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT);
-    ESP_LOGI(TAG, "min heap size: %u", heap_size);
+    printf("min heap size: %u", heap_size);
     return 0;
 }
 
@@ -147,7 +146,7 @@ static int tasks_info(int argc, char **argv)
     const size_t bytes_per_task = 40; /* see vTaskList description */
     char *task_list_buffer = malloc(uxTaskGetNumberOfTasks() * bytes_per_task);
     if (task_list_buffer == NULL) {
-        ESP_LOGE(TAG, "failed to allocate buffer for vTaskList output");
+        // ESP_LOGE(TAG, "failed to allocate buffer for vTaskList output");
         return 1;
     }
     fputs("Task Name\tStatus\tPrio\tHWM\tTask#", stdout);
@@ -193,25 +192,25 @@ static int deep_sleep(int argc, char **argv)
     }
     if (deep_sleep_args.wakeup_time->count) {
         uint64_t timeout = 1000ULL * deep_sleep_args.wakeup_time->ival[0];
-        ESP_LOGI(TAG, "Enabling timer wakeup, timeout=%lluus", timeout);
+        // ESP_LOGI(TAG, "Enabling timer wakeup, timeout=%lluus", timeout);
         ESP_ERROR_CHECK( esp_sleep_enable_timer_wakeup(timeout) );
     }
     if (deep_sleep_args.wakeup_gpio_num->count) {
         int io_num = deep_sleep_args.wakeup_gpio_num->ival[0];
         if (!rtc_gpio_is_valid_gpio(io_num)) {
-            ESP_LOGE(TAG, "GPIO %d is not an RTC IO", io_num);
+            // ESP_LOGE(TAG, "GPIO %d is not an RTC IO", io_num);
             return 1;
         }
         int level = 0;
         if (deep_sleep_args.wakeup_gpio_level->count) {
             level = deep_sleep_args.wakeup_gpio_level->ival[0];
             if (level != 0 && level != 1) {
-                ESP_LOGE(TAG, "Invalid wakeup level: %d", level);
+                // ESP_LOGE(TAG, "Invalid wakeup level: %d", level);
                 return 1;
             }
         }
-        ESP_LOGI(TAG, "Enabling wakeup on GPIO%d, wakeup on %s level",
-                 io_num, level ? "HIGH" : "LOW");
+        // ESP_LOGI(TAG, "Enabling wakeup on GPIO%d, wakeup on %s level",
+        //          io_num, level ? "HIGH" : "LOW");
 
         ESP_ERROR_CHECK( esp_sleep_enable_ext1_wakeup(1ULL << io_num, level) );
     }
@@ -261,23 +260,23 @@ static int light_sleep(int argc, char **argv)
     esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
     if (light_sleep_args.wakeup_time->count) {
         uint64_t timeout = 1000ULL * light_sleep_args.wakeup_time->ival[0];
-        ESP_LOGI(TAG, "Enabling timer wakeup, timeout=%lluus", timeout);
+        // ESP_LOGI(TAG, "Enabling timer wakeup, timeout=%lluus", timeout);
         ESP_ERROR_CHECK( esp_sleep_enable_timer_wakeup(timeout) );
     }
     int io_count = light_sleep_args.wakeup_gpio_num->count;
     if (io_count != light_sleep_args.wakeup_gpio_level->count) {
-        ESP_LOGE(TAG, "Should have same number of 'io' and 'io_level' arguments");
+        // ESP_LOGE(TAG, "Should have same number of 'io' and 'io_level' arguments");
         return 1;
     }
     for (int i = 0; i < io_count; ++i) {
         int io_num = light_sleep_args.wakeup_gpio_num->ival[i];
         int level = light_sleep_args.wakeup_gpio_level->ival[i];
         if (level != 0 && level != 1) {
-            ESP_LOGE(TAG, "Invalid wakeup level: %d", level);
+            // ESP_LOGE(TAG, "Invalid wakeup level: %d", level);
             return 1;
         }
-        ESP_LOGI(TAG, "Enabling wakeup on GPIO%d, wakeup on %s level",
-                 io_num, level ? "HIGH" : "LOW");
+        // ESP_LOGI(TAG, "Enabling wakeup on GPIO%d, wakeup on %s level",
+        //          io_num, level ? "HIGH" : "LOW");
 
         ESP_ERROR_CHECK( gpio_wakeup_enable(io_num, level ? GPIO_INTR_HIGH_LEVEL : GPIO_INTR_LOW_LEVEL) );
     }
@@ -285,7 +284,7 @@ static int light_sleep(int argc, char **argv)
         ESP_ERROR_CHECK( esp_sleep_enable_gpio_wakeup() );
     }
     if (CONFIG_CONSOLE_UART_NUM <= UART_NUM_1) {
-        ESP_LOGI(TAG, "Enabling UART wakeup (press ENTER to exit light sleep)");
+        // ESP_LOGI(TAG, "Enabling UART wakeup (press ENTER to exit light sleep)");
         ESP_ERROR_CHECK( uart_set_wakeup_threshold(CONFIG_ESP_CONSOLE_UART_NUM, 3) );
         ESP_ERROR_CHECK( esp_sleep_enable_uart_wakeup(CONFIG_ESP_CONSOLE_UART_NUM) );
     }
@@ -310,7 +309,7 @@ static int light_sleep(int argc, char **argv)
         cause_str = "unknown";
         printf("%d\n", cause);
     }
-    ESP_LOGI(TAG, "Woke up from: %s", cause_str);
+    printf( "Woke up from: %s", cause_str);
     return 0;
 }
 
