@@ -9,81 +9,66 @@
 // Test printing IP address
 
 #include "CLI.h"
-#include <stdio.h>
-#include "esp_system.h"
 #include "esp_console.h"
-#include "driver/uart.h"
-#include "linenoise/linenoise.h"
-#include "cmd_system.h"
-#include "esp_vfs_dev.h"
 
 #include "wifi_connect.h"
 
-#include "FreeRTOS.h"
 #include "esp_wifi.h"
-#include "esp_system.h"
-#include "esp_event.h"
-#include "nvs_flash.h"
-#include "gpio.h"
 
 #include "tcpip_adapter.h"
-
-esp_err_t event_handler(void *ctx, system_event_t *event)
-{
-    return ESP_OK;
-}
+#include "argtable3/argtable3.h"
 
 int get_wificonnect(int argc, char **argv)
 {
-    
-    printf("Please make a selection:\n\n1. Connect to First Responder IoT network\n2. Disconnect from First Responder IoT network\n3. Show IP address\n4. Return to CLI\n");
-
-    while (true) {
-        
-        char* line = linenoise("Input selection: ");
-        if (line == NULL) { /* Ignore empty lines */
-            linenoiseFree(line);
-            continue;
-        } else if (*line == '1') {
-            connect();
-            linenoiseFree(line);
-            break;
-        } else if (*line == '2') {
-            disconnect();
-            linenoiseFree(line);
-            break;
-        } else if (*line == '3') {
-            print_ip();
-            linenoiseFree(line);
-            break;
-        } else if (*line == '4') {
-            linenoiseFree(line);
-            break;
-        } else {
-            printf("Unrecognized command, please try again\n");
-            linenoiseFree(line);
-        }
-           
+    int nerrors = arg_parse(argc, argv, (void **) &wificonnect_args);
+    if (nerrors != 0) 
+    {
+        arg_print_errors(stderr, wificonnect_args.end, argv[0]);
+        return 1;
     }
-
-    return 0; // 0 = SUCCESS, 1 = FAILURE
+    if (wificonnect_args.connect->count)
+    {
+        connect();
+        return 0;
+    }
+    else if (wificonnect_args.disconnect->count)
+    {
+        disconnect();
+        return 0; 
+    }
+    else if (wificonnect_args.ip->count)
+    {
+        print_ip();
+        return 0;
+    }
+    else
+    {
+        return 1;
+    }
 }
 
 void reg_get_wificonnect(void)
 {
+    wificonnect_args.connect =
+        arg_lit0("c", "connect", "Connect to First Responder IoT network");
+    wificonnect_args.disconnect =
+        arg_lit0("d", "disconnect", "Disconnect from First Responder IoT network");
+    wificonnect_args.ip =
+        arg_lit0("i", "print_ip", "Print IP address");
+    wificonnect_args.end = arg_end(3);
+
     const esp_console_cmd_t cmd = {
         .command = "wificonfig",
-        .help = "Opens Wifi Connection menu.",
+        .help = "Provides options for generic wifi commands",
         .hint = NULL,
         .func = &get_wificonnect,
+        .argtable = &wificonnect_args,
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }
 
 void connect(void)
 {
-    nvs_flash_init();
-
     // Configure static IP address
     tcpip_adapter_init();
     tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_STA);
@@ -94,7 +79,7 @@ void connect(void)
     tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_STA, &ipInfo);
 
     // Configure Wi-FI station settings
-    ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL) );
+    // ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL) );
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
     ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
@@ -117,17 +102,16 @@ void disconnect(void)
 {
     tcpip_adapter_init();
 
-    nvs_flash_init();
     tcpip_adapter_init();
-    ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL) );
+    // ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL) );
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
     ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
     ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
     wifi_config_t sta_config = {
         .sta = {
-            .ssid = "Nittany_Dragon",
-            .password = "6107331632",
+            .ssid = "80kNetworkTest",
+            .password = "80kpassword",
             .bssid_set = false
         }
     };
@@ -138,5 +122,5 @@ void disconnect(void)
 
 void print_ip(void)
 {
-    
+    ;
 }

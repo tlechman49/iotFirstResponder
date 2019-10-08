@@ -150,7 +150,7 @@ void register_commands()
     reg_analog_write();
 
     //Wifi Configuration
-    reg_get_wificonect();
+    reg_get_wificonnect();
 }
 
 // Example command get_foo
