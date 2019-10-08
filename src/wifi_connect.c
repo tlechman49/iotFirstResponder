@@ -126,8 +126,8 @@ void disconnect(void)
     ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
     wifi_config_t sta_config = {
         .sta = {
-            .ssid = "Nittany_Dragon",
-            .password = "6107331632",
+            .ssid = "80kNetworkTest",
+            .password = "80kpassword",
             .bssid_set = false
         }
     };
