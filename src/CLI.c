@@ -12,6 +12,8 @@
 #include "argtable3/argtable3.h"
 #include "Arduino.h"
 
+#include "wifi_connect.h"
+
 // Initializes the CLI interface using the C style ESP32 IDF setup instead of Arduino serial
 void initialize_console()
 {
@@ -146,6 +148,9 @@ void register_commands()
     reg_analog_read();
     reg_digital_write();
     reg_analog_write();
+
+    //Wifi Configuration
+    reg_get_wificonect();
 }
 
 // Example command get_foo
