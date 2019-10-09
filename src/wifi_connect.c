@@ -1,11 +1,11 @@
 // Wifi Configuration
 // CLI implementation based out of foo CLI functions
 // Wifi connection based out of ESP-IDF wifi template
+// Static IP configuration confirmed on Raspberry Pi
 // TCP/IP configurations are still a work in progress
 
 // Remaining to-do's:
 // Display some form on confirmation message when running the connect or disconnect functions
-// Test static IP configuration
 // Test printing IP address
 
 #include "CLI.h"
@@ -14,9 +14,20 @@
 #include "wifi_connect.h"
 
 #include "esp_wifi.h"
-
 #include "tcpip_adapter.h"
 #include "argtable3/argtable3.h"
+#include "esp_event_loop.h"
+#include "esp_err.h"
+#include "freertos/FreeRTOS.h"
+#include "esp_system.h"
+#include "esp_event.h"
+#include "nvs_flash.h"
+#include "driver/gpio.h"
+
+esp_err_t event_handler(void *ctx, system_event_t *event)
+{
+    return ESP_OK;
+}
 
 int get_wificonnect(int argc, char **argv)
 {
@@ -79,7 +90,7 @@ void connect(void)
     tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_STA, &ipInfo);
 
     // Configure Wi-FI station settings
-    // ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL) );
+    ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL) );
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
     ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
@@ -103,7 +114,7 @@ void disconnect(void)
     tcpip_adapter_init();
 
     tcpip_adapter_init();
-    // ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL) );
+    ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL) );
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
     ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
