@@ -8,7 +8,7 @@
 // Test static IP configuration
 // Test printing IP address
 
-#include "CLI.h"
+#include "CLI.hpp"
 #include "esp_console.h"
 
 #include "wifi_connect.h"

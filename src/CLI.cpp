@@ -1,7 +1,7 @@
 // CLI interface for debugging and testing on ESP32
 // Scroll to "register_commands" function to start adding more commands
 
-#include "CLI.h"
+#include "CLI.hpp"
 #include <stdio.h>
 #include "esp_system.h"
 #include "esp_console.h"
@@ -10,9 +10,11 @@
 #include "cmd_system.h"
 #include "esp_vfs_dev.h"
 #include "argtable3/argtable3.h"
-#include "Arduino.h"
+// #include "Arduino.h"
 
 #include "wifi_connect.h"
+#include "main.hpp"
+#include "wifi_task.hpp"
 
 // Initializes the CLI interface using the C style ESP32 IDF setup instead of Arduino serial
 void initialize_console()
@@ -28,30 +30,29 @@ void initialize_console()
     /* Configure UART. Note that REF_TICK is used so that the baud rate remains
      * correct while APB frequency is changing in light sleep mode.
      */
-    const uart_config_t uart_config = {
-            .baud_rate = CONFIG_ESP_CONSOLE_UART_BAUDRATE,
-            .data_bits = UART_DATA_8_BITS,
-            .parity = UART_PARITY_DISABLE,
-            .stop_bits = UART_STOP_BITS_1,
-            .use_ref_tick = true
-    };
-    ESP_ERROR_CHECK( uart_param_config(CONFIG_ESP_CONSOLE_UART_NUM, &uart_config) );
+    uart_config_t uart_config;
+    uart_config.baud_rate       = CONFIG_ESP_CONSOLE_UART_BAUDRATE;
+    uart_config.data_bits       = UART_DATA_8_BITS;
+    uart_config.parity          = UART_PARITY_DISABLE;
+    uart_config.stop_bits       = UART_STOP_BITS_1;
+    uart_config.use_ref_tick    = true;
+    ESP_ERROR_CHECK( uart_param_config((uart_port_t)CONFIG_ESP_CONSOLE_UART_NUM, &uart_config) );
 
     /* Install UART driver for interrupt-driven reads and writes */
-    ESP_ERROR_CHECK( uart_driver_install(CONFIG_ESP_CONSOLE_UART_NUM,
+    ESP_ERROR_CHECK( uart_driver_install((uart_port_t)CONFIG_ESP_CONSOLE_UART_NUM,
             256, 0, 0, NULL, 0) );
 
     // /* Tell VFS to use UART driver */
     esp_vfs_dev_uart_use_driver(CONFIG_ESP_CONSOLE_UART_NUM);
 
     /* Initialize the console */
-    esp_console_config_t console_config = {
-            .max_cmdline_args = 8,
-            .max_cmdline_length = 256,
+    esp_console_config_t console_config;
+    console_config.max_cmdline_args = 8;
+    console_config.max_cmdline_length = 256;
 #if CONFIG_LOG_COLORS
-            .hint_color = atoi(LOG_COLOR_CYAN)
+        console_config.hint_color = atoi(LOG_COLOR_CYAN)
 #endif
-    };
+    
     ESP_ERROR_CHECK( esp_console_init(&console_config) );
 
     /* Configure linenoise line completion library */
@@ -151,6 +152,9 @@ void register_commands()
 
     //Wifi Configuration
     reg_get_wificonnect();
+
+    //Operate wifi task
+    reg_wifi();
 }
 
 // Example command get_foo
@@ -172,6 +176,11 @@ void reg_get_foo(void)
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }
+
+struct {
+    struct arg_int *pin_num;
+    struct arg_end *end;
+} d_read_args;
 
 //digital read a gpio pin specified with an argument
 int digital_read(int argc, char **argv)
@@ -215,6 +224,11 @@ void reg_digital_read(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }
 
+struct {
+    struct arg_int *pin_num;
+    struct arg_end *end;
+} a_read_args;
+
 // analog read an analog pin specified with an argument
 int analog_read(int argc, char **argv)
 {
@@ -256,6 +270,12 @@ void reg_analog_read(void)
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }
+
+struct {
+    struct arg_int *pin_num;
+    struct arg_int *pin_set;
+    struct arg_end *end;
+} d_write_args;
 
 //digital write a gpio pin specified with an argument
 int digital_write(int argc, char **argv)
@@ -310,6 +330,12 @@ void reg_digital_write(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }
 
+struct {
+    struct arg_int *pin_num;
+    struct arg_int *pin_set;
+    struct arg_end *end;
+} a_write_args;
+
 // analog write an analog pin specified with an argument to a given value
 int analog_write(int argc, char **argv)
 {
@@ -358,6 +384,86 @@ void reg_analog_write(void)
         .hint = NULL,
         .func = &analog_write,
         .argtable = &a_write_args,
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
+}
+
+struct {
+    struct arg_str *ssid;
+    struct arg_str *pwd;
+    struct arg_lit *connect;
+    struct arg_lit *ip;
+    struct arg_end *end;
+} wifi_args;
+
+int wifi(int argc, char **argv)
+{
+    int nerrors = arg_parse(argc, argv, (void **) &wifi_args);
+    if (nerrors != 0) 
+    {
+        arg_print_errors(stderr, wifi_args.end, argv[0]);
+        return 1;
+    }
+
+    uint32_t ulNotifiedValue;
+    int u8RetVal = 0;
+
+    if (wifi_args.ssid->count)
+    {
+        char ssid[32];
+        const char *ssidIn = wifi_args.ssid->sval[0];
+        u8RetVal += wifi_task::setSSID(ssidIn);
+        wifi_task::getSSID(ssid);
+        printf("\r\nssid: ");
+        printf(ssid);
+        printf("\r\n");
+    }
+    if (wifi_args.pwd->count)
+    {
+        char pwd[64];
+        const char *pwdIn = wifi_args.pwd->sval[0];
+        u8RetVal += wifi_task::setPwd(pwdIn);
+        wifi_task::getPwd(pwd);
+        printf("\r\npwd: ");
+        printf(pwd);
+        printf("\r\n");
+    }
+    if (wifi_args.connect->count)
+    {
+        xTaskNotify( taskHandleWiFi, 0x01, eSetBits );
+        xTaskNotifyWait( 0x00,      /* Don't clear any notification bits on entry. */
+                         ULONG_MAX, /* Reset the notification value to 0 on exit. */
+                         &ulNotifiedValue, /* Notified value pass out in
+                                              ulNotifiedValue. */
+                         portMAX_DELAY );  /* Block indefinitely. */
+        u8RetVal += ulNotifiedValue;
+    }
+    if (wifi_args.ip->count)
+    {
+        printf(wifi_task::getIP().toString().c_str());
+        printf("\r\n");
+    }
+    return u8RetVal;
+}
+
+void reg_wifi(void)
+{
+    wifi_args.ssid =
+        arg_str0("s", "ssid", "<ssid>", "SSID used for wifi connections");
+    wifi_args.pwd =
+        arg_str0("p", "pwd", "<pwd>", "Password used for wifi connections");
+    wifi_args.connect =
+        arg_lit0("c", "connect", "Connect to First Responder IoT network");
+    wifi_args.ip =
+        arg_lit0("i", "print_ip", "Print IP address");
+    wifi_args.end = arg_end(4);
+
+    const esp_console_cmd_t cmd = {
+        .command = "wifi",
+        .help = "Provides options for generic wifi commands",
+        .hint = NULL,
+        .func = &wifi,
+        .argtable = &wifi_args,
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }

@@ -17,33 +17,20 @@ int get_foo(int argc, char **argv);
 void reg_get_foo(void);
 
 // GPIO commands
-struct {
-    struct arg_int *pin_num;
-    struct arg_end *end;
-} d_read_args;
 int digital_read(int argc, char **argv);
 void reg_digital_read(void);
-struct {
-    struct arg_int *pin_num;
-    struct arg_end *end;
-} a_read_args;
+
 int analog_read(int argc, char **argv);
 void reg_analog_read(void);
 
-struct {
-    struct arg_int *pin_num;
-    struct arg_int *pin_set;
-    struct arg_end *end;
-} d_write_args;
 int digital_write(int argc, char **argv);
 void reg_digital_write(void);
-struct {
-    struct arg_int *pin_num;
-    struct arg_int *pin_set;
-    struct arg_end *end;
-} a_write_args;
+
 int analog_write(int argc, char **argv);
 void reg_analog_write(void);
+
+int wifi(int argc, char **argv);
+void reg_wifi(void);
 
 #ifdef __cplusplus
 }
