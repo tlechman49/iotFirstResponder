@@ -14,6 +14,11 @@ char wifi_task::_ssid[32] = "";
 char wifi_task::_pwd[64] = "";
 IPAddress wifi_task::_ip;
 
+// Lines 18 to 20 are Static IP configurations
+IPAddress static_ip(192,168,1,12);
+IPAddress gateway(192,168,1,1);
+IPAddress subnet(255,255,255,0);
+
 void TaskWiFi(void *pvParameters) 
 {
     (void)pvParameters;
@@ -73,6 +78,8 @@ int wifi_task::connect()
 {
     int connectTimeout = 0;
 
+    // To use DHCP instead of Static IP, comment out Line 82
+    // WiFi.config(static_ip,gateway,subnet);
     WiFi.begin(_ssid, _pwd);
     while ((WiFi.status() != WL_CONNECTED) && connectTimeout < 100) // 10 seconds
     {
