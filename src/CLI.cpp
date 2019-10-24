@@ -162,6 +162,7 @@ void register_commands()
 
     //sensor tasks
     reg_get_co2();
+    reg_get_temp();
 }
 
 // Example command get_foo
