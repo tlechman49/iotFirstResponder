@@ -14,11 +14,11 @@
 #include "driver/gpio.h"
 #include "driver/adc.h"
 // #include "Arduino.h"
-
 #include "wifi_connect.h"
 #include "main.hpp"
 #include "wifi_task.hpp"
-#include "sensor_tasks.hpp"
+#include "sensor_task.hpp"
+
 // Initializes the CLI interface using the C style ESP32 IDF setup instead of Arduino serial
 void initialize_console()
 {
@@ -233,22 +233,17 @@ void reg_digital_read(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }
 
-
-
-struct {
-    struct arg_int *pin_num;
-    struct arg_end *end;
-} a_read_args;
 // corrected ADC read function designed for pin 36
-
 int analog_read_adj(int argc, char **argv)
 {
-adc1_config_width(ADC_WIDTH_BIT_12);
-adc1_config_channel_atten(ADC1_CHANNEL_0,ADC_ATTEN_DB_0);
-int val = adc1_get_raw(ADC1_CHANNEL_0);
-printf("%d\r\n",val);
-return 0;
+    adc1_config_width(ADC_WIDTH_BIT_12);
+    adc1_config_channel_atten(ADC1_CHANNEL_0,ADC_ATTEN_DB_0);
+    int val = adc1_get_raw(ADC1_CHANNEL_0);
+    printf("%d\r\n",val);
+    return 0;
 }
+
+//register the analog read adjustment to the CLI
 void reg_analog_read_adj(void)
 {
     const esp_console_cmd_t cmd = {
@@ -256,11 +251,14 @@ void reg_analog_read_adj(void)
         .help = "Reads a full scale calibrated ADC input",
         .hint = NULL,
         .func = &analog_read_adj,
-        .argtable = &a_read_args,
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }
 
+struct {
+    struct arg_int *pin_num;
+    struct arg_end *end;
+} a_read_args;
 
 // analog read an analog pin specified with an argument
 int analog_read(int argc, char **argv)
@@ -430,6 +428,7 @@ struct {
     struct arg_end *end;
 } wifi_args;
 
+// sends messages and changes statics in wifi task to perform operations
 int wifi(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **) &wifi_args);
@@ -442,6 +441,7 @@ int wifi(int argc, char **argv)
     uint32_t ulNotifiedValue;
     int u8RetVal = 0;
 
+    // changes static ssid 
     if (wifi_args.ssid->count)
     {
         char ssid[32];
@@ -452,6 +452,8 @@ int wifi(int argc, char **argv)
         printf(ssid);
         printf("\r\n");
     }
+
+    // changes static pwd
     if (wifi_args.pwd->count)
     {
         char pwd[64];
@@ -462,11 +464,15 @@ int wifi(int argc, char **argv)
         printf(pwd);
         printf("\r\n");
     }
+
+    // changes static boolean to inform wifi task to connect with static ip
     if (wifi_args.staticIp->count)
     {
         u8RetVal += wifi_task::setIpStatic(1);
         printf("\r\nStatic IP set");
     }
+
+    // informs wifi task to begin connection procedure
     if (wifi_args.connect->count)
     {
         xTaskNotify( taskHandleWiFi, 0x01, eSetBits );
@@ -477,6 +483,8 @@ int wifi(int argc, char **argv)
                          portMAX_DELAY );  /* Block indefinitely. */
         u8RetVal += ulNotifiedValue;
     }
+
+    // prints the ip address currently in use by the wifi task
     if (wifi_args.ip->count)
     {
         printf(wifi_task::getIP().toString().c_str());
@@ -485,6 +493,7 @@ int wifi(int argc, char **argv)
     return u8RetVal;
 }
 
+// registers the wifi commands to the cli
 void reg_wifi(void)
 {
     wifi_args.ssid =
@@ -507,4 +516,45 @@ void reg_wifi(void)
         .argtable = &wifi_args,
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
+}
+
+// cli command to get the temperature
+int cli_get_temp(int argc, char **argv)
+{
+    double temp = get_temp();
+    printf("Temp =  %f degrees C\r\n", temp);
+    return 0;
+}
+
+// register get temperature to the cli
+void reg_get_temp(void)
+{
+    const esp_console_cmd_t cmd = {
+        .command = "get_temp",
+        .help = "Reads data from temp sensor on PIN 36 and converts to temperature",
+        .hint = NULL,
+        .func = &cli_get_temp,
+    };
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
+}
+
+
+//CLI command to get co2 levels
+int cli_get_co2(int argc, char **argv)
+{
+    uint16_t co2_level = get_co2();
+    printf("%u\r\n", co2_level);
+    return 0;
+}
+
+// register get co2 to the cli
+void reg_get_co2(void)
+{
+    const esp_console_cmd_t cmd = {
+        .command = "get_co2",
+        .help = "Reads data from c02 sensor",
+        .hint = NULL,
+        .func = &cli_get_co2,
+    };
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
 }

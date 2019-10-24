@@ -20,6 +20,9 @@ void reg_get_foo(void);
 int digital_read(int argc, char **argv);
 void reg_digital_read(void);
 
+int analog_read_adj(int argc, char **argv);
+void reg_analog_read_adj(void);
+
 int analog_read(int argc, char **argv);
 void reg_analog_read(void);
 
@@ -32,9 +35,11 @@ void reg_analog_write(void);
 int wifi(int argc, char **argv);
 void reg_wifi(void);
 
-int analog_read_adj(int argc, char **argv);
-void reg_analog_read_adj(void);
+int cli_get_temp(int argc, char **argv);
+void reg_get_temp(void);
 
+int cli_get_co2(int argc, char **argv);
+void reg_get_co2(void);
 
 #ifdef __cplusplus
 }
