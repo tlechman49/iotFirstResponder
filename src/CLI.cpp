@@ -10,12 +10,15 @@
 #include "cmd_system.h"
 #include "esp_vfs_dev.h"
 #include "argtable3/argtable3.h"
+#include "esp_adc_cal.h"
+#include "driver/gpio.h"
+#include "driver/adc.h"
 // #include "Arduino.h"
 
 #include "wifi_connect.h"
 #include "main.hpp"
 #include "wifi_task.hpp"
-
+#include "sensor_tasks.hpp"
 // Initializes the CLI interface using the C style ESP32 IDF setup instead of Arduino serial
 void initialize_console()
 {
@@ -149,12 +152,16 @@ void register_commands()
     reg_analog_read();
     reg_digital_write();
     reg_analog_write();
+    reg_analog_read_adj();
 
     //Wifi Configuration
     reg_get_wificonnect();
 
     //Operate wifi task
     reg_wifi();
+
+    //sensor tasks
+    reg_get_co2();
 }
 
 // Example command get_foo
@@ -207,6 +214,7 @@ int digital_read(int argc, char **argv)
     return 1;
 }
 
+
 // register digital read to the cli
 void reg_digital_read(void)
 {
@@ -224,10 +232,34 @@ void reg_digital_read(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }
 
+
+
 struct {
     struct arg_int *pin_num;
     struct arg_end *end;
 } a_read_args;
+// corrected ADC read function designed for pin 36
+
+int analog_read_adj(int argc, char **argv)
+{
+adc1_config_width(ADC_WIDTH_BIT_12);
+adc1_config_channel_atten(ADC1_CHANNEL_0,ADC_ATTEN_DB_0);
+int val = adc1_get_raw(ADC1_CHANNEL_0);
+printf("%d\r\n",val);
+return 0;
+}
+void reg_analog_read_adj(void)
+{
+    const esp_console_cmd_t cmd = {
+        .command = "analog_read_adj",
+        .help = "Reads a full scale calibrated ADC input",
+        .hint = NULL,
+        .func = &analog_read_adj,
+        .argtable = &a_read_args,
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
+}
+
 
 // analog read an analog pin specified with an argument
 int analog_read(int argc, char **argv)

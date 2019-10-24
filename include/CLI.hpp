@@ -32,6 +32,10 @@ void reg_analog_write(void);
 int wifi(int argc, char **argv);
 void reg_wifi(void);
 
+int analog_read_adj(int argc, char **argv);
+void reg_analog_read_adj(void);
+
+
 #ifdef __cplusplus
 }
 #endif
