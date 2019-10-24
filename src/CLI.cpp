@@ -85,6 +85,9 @@ void TaskCLI(void *pvParameters) // This is a task.
 {
     (void)pvParameters;
 
+    // initializes the console
+    initialize_console();
+
     /* Prompt to be printed before each line.
      * This can be customized, made dynamic, etc.
      */
@@ -469,7 +472,7 @@ int wifi(int argc, char **argv)
     if (wifi_args.staticIp->count)
     {
         u8RetVal += wifi_task::setIpStatic(1);
-        printf("\r\nStatic IP set");
+        printf("\r\nStatic IP set\r\n");
     }
 
     // informs wifi task to begin connection procedure

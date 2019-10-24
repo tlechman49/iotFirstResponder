@@ -16,9 +16,6 @@ TaskHandle_t taskHandleWiFi = NULL;
 // the setup function runs once when you press reset or power the board
 void setup()
 {
-    // initializes the console
-    initialize_console();
-
     // Create some initial tasks here
     xTaskCreatePinnedToCore(
         TaskWiFi, "TaskWiFi" // A name just for humans
