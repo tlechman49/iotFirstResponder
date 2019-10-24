@@ -13,6 +13,7 @@
 char wifi_task::_ssid[32] = "";
 char wifi_task::_pwd[64] = "";
 IPAddress wifi_task::_ip;
+int wifi_task::_isIpStatic = 0;
 
 // Lines 18 to 20 are Static IP configurations
 IPAddress static_ip(192,168,1,12);
@@ -78,8 +79,11 @@ int wifi_task::connect()
 {
     int connectTimeout = 0;
 
-    // To use DHCP instead of Static IP, comment out Line 82
-    // WiFi.config(static_ip,gateway,subnet);
+    //is true if IP is set to static in the CLI otherwise DHCP is used
+    if (_isIpStatic)
+    {
+        WiFi.config(static_ip,gateway,subnet);
+    }
     WiFi.begin(_ssid, _pwd);
     while ((WiFi.status() != WL_CONNECTED) && connectTimeout < 100) // 10 seconds
     {
@@ -136,4 +140,11 @@ int wifi_task::setPwd(const char* pwd)
 IPAddress wifi_task::getIP()
 {
     return _ip;
+}
+
+int wifi_task::setIpStatic(int set)
+{
+    _isIpStatic = set;
+    if (_isIpStatic == set) return 0; // Success
+    else return 1; // failure
 }

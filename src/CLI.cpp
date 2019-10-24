@@ -425,6 +425,7 @@ struct {
     struct arg_str *pwd;
     struct arg_lit *connect;
     struct arg_lit *ip;
+    struct arg_lit *staticIp;
     struct arg_end *end;
 } wifi_args;
 
@@ -460,6 +461,11 @@ int wifi(int argc, char **argv)
         printf(pwd);
         printf("\r\n");
     }
+    if (wifi_args.staticIp->count)
+    {
+        u8RetVal += wifi_task::setIpStatic(1);
+        printf("\r\nStatic IP set");
+    }
     if (wifi_args.connect->count)
     {
         xTaskNotify( taskHandleWiFi, 0x01, eSetBits );
@@ -488,6 +494,8 @@ void reg_wifi(void)
         arg_lit0("c", "connect", "Connect to First Responder IoT network");
     wifi_args.ip =
         arg_lit0("i", "print_ip", "Print IP address");
+    wifi_args.staticIp = 
+        arg_lit0("a", "static_ip", "Sets the IP to static");
     wifi_args.end = arg_end(4);
 
     const esp_console_cmd_t cmd = {

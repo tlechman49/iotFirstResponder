@@ -17,9 +17,11 @@ class wifi_task
         static void getPwd(char* pwd);
         static int setPwd(const char* pwd);
         static IPAddress getIP();
+        static int setIpStatic(int set);
     private:
         static char _ssid[32];
         static char _pwd[64];
         static IPAddress _ip;
+        static int _isIpStatic;
 
 };
