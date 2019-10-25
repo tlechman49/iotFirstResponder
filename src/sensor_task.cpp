@@ -4,27 +4,88 @@
 #include "driver/gpio.h"
 #include "driver/adc.h"
 
+//set statics at compile time
+double TMP3X::_temp = 0;
+uint16_t CCS_CO2::_co2 = 0;
+
 Adafruit_CCS811 ccs;
 
-//gets temperature from pin 36 only.. can be changed by changing the channel .. but this should be fine
-double get_temp()
+
+// sensor task function
+void TaskSensor(void *pvParameters) 
+{
+    (void)pvParameters;
+
+    //task loop
+    for (;;)
+    {
+        vTaskDelay(1000);
+    }
+}
+
+//initializes the temperature sensor
+TMP3X::TMP3X()
 {
     adc1_config_width(ADC_WIDTH_BIT_12);
     adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_0);
-    int adcval = adc1_get_raw(ADC1_CHANNEL_0);
-    double v = (adcval / 4095.0) * 1.1; //in volts
-    double temp = (v - 0.5) * 100;      // in celcius
-    return temp;
 }
 
-// gets the co2 level
-//things to do: add include literal argument -i for initalize -g get shit... cool!
-uint16_t get_co2()
+TMP3X::~TMP3X()
 {
-    if (init_co2())
+    ;
+}
+
+//reads temperature from pin 36 only.. can be changed by changing the channel .. but this should be fine
+int TMP3X::readTemp()
+{
+    int adcval = adc1_get_raw(ADC1_CHANNEL_0);
+
+    //check if it gave a bad value
+    if (adcval == -1)
     {
-        return -1;
+        return 1;
     }
+
+    //convert to volts then to celcius
+    double v = (adcval / 4095.0) * 1.1; //in volts
+    _temp = (v - 0.5) * 100;      // in celcius
+    return 0;
+}
+
+//gets the last read value from the temperature sensor
+double TMP3X::getTemp()
+{
+    return _temp; 
+}
+
+CCS_CO2::CCS_CO2()
+{
+    ;
+}
+
+CCS_CO2::~CCS_CO2()
+{
+    ;
+}
+
+int CCS_CO2::begin()
+{
+    int availTimeout = 0;
+    if (!ccs.begin())
+    {
+        return 1;
+    }
+    while (!ccs.available() && availTimeout < 30) // 3 seconds
+    {
+        vTaskDelay(100);
+        availTimeout++;
+    }
+    return 0;
+}
+
+// reads the co2 sensor and stores to static
+int CCS_CO2::readCo2()
+{
     if (ccs.available())
     {
         if (!ccs.readData())
@@ -43,17 +104,7 @@ uint16_t get_co2()
     }
 }
 
-int init_co2()
+uint16_t CCS_CO2::getCo2()
 {
-    int availTimeout = 0;
-    if (!ccs.begin())
-    {
-        return 1;
-    }
-    while (!ccs.available() && availTimeout < 30) // 3 seconds
-    {
-        vTaskDelay(100);
-        availTimeout++;
-    }
-    return 0;
+    return _co2;
 }

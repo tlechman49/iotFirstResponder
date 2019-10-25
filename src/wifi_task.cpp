@@ -6,10 +6,6 @@
 #include "string.h"
 #include "WiFi.h"
 
-#ifndef LED_BUILTIN
-#define LED_BUILTIN 13
-#endif
-
 char wifi_task::_ssid[32] = "";
 char wifi_task::_pwd[64] = "";
 IPAddress wifi_task::_ip;
@@ -27,8 +23,6 @@ void TaskWiFi(void *pvParameters)
     uint32_t ulRetVal = 0;
 
     wifi_task wifiTask;
-
-    pinMode(LED_BUILTIN, OUTPUT);
   
     for (;;) // A Task shall never return or exit.
     {

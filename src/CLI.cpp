@@ -524,9 +524,18 @@ void reg_wifi(void)
 // cli command to get the temperature
 int cli_get_temp(int argc, char **argv)
 {
-    double temp = get_temp();
-    printf("Temp =  %f degrees C\r\n", temp);
-    return 0;
+    TMP3X tmp;
+    if (tmp.readTemp() == 0)
+    {
+        double temp = tmp.getTemp();
+        printf("Temp =  %f degrees C\r\n", temp);
+        return 0;
+    }
+    else
+    {
+        return 1;
+    }
+    
 }
 
 // register get temperature to the cli
@@ -543,11 +552,24 @@ void reg_get_temp(void)
 
 
 //CLI command to get co2 levels
+//things to do: add include literal argument -i for initalize -g get shit... cool!
 int cli_get_co2(int argc, char **argv)
 {
-    uint16_t co2_level = get_co2();
-    printf("%u\r\n", co2_level);
-    return 0;
+    CCS_CO2 co2;
+    if (co2.begin())
+    {
+        return 1;
+    }
+    if (co2.readCo2() == 0)
+    {
+        uint16_t co2_level = co2.getCo2();
+        printf("%u\r\n", co2_level);
+        return 0;
+    }
+    else
+    {
+        return 1;
+    }
 }
 
 // register get co2 to the cli
