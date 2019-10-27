@@ -428,6 +428,11 @@ struct {
     struct arg_lit *connect;
     struct arg_lit *ip;
     struct arg_lit *staticIp;
+    struct arg_lit *tcpClient;
+    struct arg_lit *transmit;
+    struct arg_str *write;
+    struct arg_lit *receive;
+    struct arg_lit *display;
     struct arg_end *end;
 } wifi_args;
 
@@ -493,6 +498,53 @@ int wifi(int argc, char **argv)
         printf(wifi_task::getIP().toString().c_str());
         printf("\r\n");
     }
+
+    if (wifi_args.tcpClient->count)
+    {
+        xTaskNotify( taskHandleWiFi, 0x02, eSetBits );
+        xTaskNotifyWait( 0x00,      /* Don't clear any notification bits on entry. */
+                         ULONG_MAX, /* Reset the notification value to 0 on exit. */
+                         &ulNotifiedValue, /* Notified value pass out in
+                                              ulNotifiedValue. */
+                         portMAX_DELAY );  /* Block indefinitely. */
+        u8RetVal += ulNotifiedValue;
+    }
+
+    if (wifi_args.transmit->count)
+    {
+        xTaskNotify( taskHandleWiFi, 0x04, eSetBits );
+        xTaskNotifyWait( 0x00,      /* Don't clear any notification bits on entry. */
+                         ULONG_MAX, /* Reset the notification value to 0 on exit. */
+                         &ulNotifiedValue, /* Notified value pass out in
+                                              ulNotifiedValue. */
+                         portMAX_DELAY );  /* Block indefinitely. */
+        u8RetVal += ulNotifiedValue;
+    }
+
+    if (wifi_args.receive->count)
+    {
+        xTaskNotify( taskHandleWiFi, 0x08, eSetBits );
+        xTaskNotifyWait( 0x00,      /* Don't clear any notification bits on entry. */
+                         ULONG_MAX, /* Reset the notification value to 0 on exit. */
+                         &ulNotifiedValue, /* Notified value pass out in
+                                              ulNotifiedValue. */
+                         portMAX_DELAY );  /* Block indefinitely. */
+        u8RetVal += ulNotifiedValue;
+    }
+
+    if (wifi_args.write->count)
+    {
+        const char *messageIn = wifi_args.write->sval[0];
+        u8RetVal += wifi_task::setMessage(messageIn);
+    }
+
+    if (wifi_args.display->count)
+    {
+        char readMessage[32];
+        wifi_task::getMessage(readMessage);
+        printf(readMessage);
+        printf("\r\n");
+    }
     return u8RetVal;
 }
 
@@ -509,6 +561,16 @@ void reg_wifi(void)
         arg_lit0("i", "print_ip", "Print IP address");
     wifi_args.staticIp = 
         arg_lit0("a", "static_ip", "Sets the IP to static");
+    wifi_args.tcpClient = 
+        arg_lit0("e", "establish_tcp", "Establish TCP connection with the TCP Server");
+    wifi_args.transmit = 
+        arg_lit0("t", "tcp_transmit", "Transmit data to TCP Server");
+    wifi_args.write = 
+        arg_str0("w", "write_message", "<message>", "Write message to be sent over TCP");
+    wifi_args.receive = 
+        arg_lit0("r", "tcp_receive", "Receive data from TCP Server");
+    wifi_args.display =
+        arg_lit0("d", "display_message", "Display message read over TCP");
     wifi_args.end = arg_end(4);
 
     const esp_console_cmd_t cmd = {

@@ -16,6 +16,12 @@ IPAddress static_ip(192,168,1,12);
 IPAddress gateway(192,168,1,1);
 IPAddress subnet(255,255,255,0);
 
+IPAddress wifi_task::host_ip(192,168,1,1); 
+WiFiClient wifi_task::client;
+char wifi_task::_readMessage[32] = "";  // message read from TCP server
+char wifi_task::_writeMessage[32] = ""; // message sent to TCP server
+String tempString = ""; // used in reading data from TCP server
+
 void TaskWiFi(void *pvParameters) 
 {
     (void)pvParameters;
@@ -45,13 +51,19 @@ void TaskWiFi(void *pvParameters)
         if( ( ulNotifiedValue & 0x02 ) != 0 )
         {
             /* Bit 1 was set - process whichever event is represented by bit 1. */
-            ;
+            wifiTask.tcpClient();
         }
 
         if( ( ulNotifiedValue & 0x04 ) != 0 )
         {
             /* Bit 2 was set - process whichever event is represented by bit 2. */
-            ;
+            wifiTask.transmit();
+        }
+
+        if( ( ulNotifiedValue & 0x08 ) != 0 )
+        {
+            /* Bit 2 was set - process whichever event is represented by bit 2. */
+            wifiTask.receive();
         }
 
         // Set return notification to the return value, 0 == SUCCESS
@@ -62,11 +74,17 @@ void TaskWiFi(void *pvParameters)
 wifi_task::wifi_task(){
     strcpy(_ssid, "");
     strcpy(_pwd, "");
+
+    strcpy(_readMessage, "");
+    strcpy(_writeMessage, "");
 }
 
 wifi_task::~wifi_task(){
     strcpy(_ssid, "");
     strcpy(_pwd, "");
+
+    strcpy(_readMessage, "");
+    strcpy(_writeMessage, "");
 }
 
 int wifi_task::connect()
@@ -141,4 +159,69 @@ int wifi_task::setIpStatic(int set)
     _isIpStatic = set;
     if (_isIpStatic == set) return 0; // Success
     else return 1; // failure
+}
+
+int wifi_task::tcpClient()  // establishes TCP client role
+{
+    int connectTimeout = 0;
+
+    client.connect(host_ip,5005);   // connect to TCP server (Raspberry Pi)
+    while ((!client.connected()) && connectTimeout < 100) // 10 seconds
+    {
+        vTaskDelay(100);
+        connectTimeout++;
+    }
+    if (client.connected())
+    {
+        return 0;
+    }
+    else
+    {
+        return 1;
+    }
+}
+
+int wifi_task::transmit() // sends data to TCP server
+{
+    if (client.connected())
+    {
+        client.println(_writeMessage);
+        return 0;
+    }
+    else
+    {
+        return 1;
+    }
+}
+
+int wifi_task::receive()    // receives data from TCP server
+{
+    if (client.available())
+    {
+        tempString = client.readString();
+        strcpy(_readMessage, tempString.c_str());
+        return 0;
+    }
+    else 
+    {
+        return 1;
+    }
+}
+
+int wifi_task::setMessage(const char* writeMessage) // allows user to write data to be sent in wifi_task.transmit()
+{
+    strlcpy(_writeMessage, writeMessage, 32); 
+    if (strncmp(writeMessage, _writeMessage, 32) == 0)
+    {
+        return 0;
+    }
+    else
+    {
+        return 1;
+    }
+}
+
+void wifi_task::getMessage(char* readMessage)   // displays data received from wifi_task.receive()
+{
+    strlcpy(readMessage, _readMessage, 32); 
 }
