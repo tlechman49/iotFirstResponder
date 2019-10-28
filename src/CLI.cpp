@@ -645,3 +645,53 @@ void reg_get_co2(void)
     };
     ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
 }
+
+// demo features of the device for presentation
+int cli_demo(int argc, char **argv)
+{
+    uint32_t ulNotifiedValue;
+
+    printf("\r\nDemo starting...\r\n");
+
+    // set wifi ssid and pwd 
+    // we should be set to start hardcoding the network of the pi since this demo will
+    // be fed back to our headless scheme
+    if (wifi_task::setSSID("INSERT WIFI HERE"))     return 1; //set ssid, fail out if not set
+    if (wifi_task::setPwd("INSERT PWD HERE"))       return 1; //set pwd, fail out if not set
+    if (wifi_task::setIpStatic(1))                  return 1; //set static ip, fail out if not set
+
+    // connect to wifi
+    xTaskNotify( taskHandleWiFi, 0x01, eSetBits );
+    xTaskNotifyWait( 0x00,      /* Don't clear any notification bits on entry. */
+                     ULONG_MAX, /* Reset the notification value to 0 on exit. */
+                     &ulNotifiedValue, /* Notified value pass out in
+                                          ulNotifiedValue. */
+                     portMAX_DELAY );  /* Block indefinitely. */
+
+    if (ulNotifiedValue)                            return 1; //fail out if not connected to wifi
+
+    // begin tcp client
+
+
+    // read sensors
+
+    // send sensors to tcp server
+
+    // wait to recieve message from tcp server
+
+    // blink on board led according to message
+
+    return 0;
+}
+
+// register demo to the cli
+void reg_demo(void)
+{
+    const esp_console_cmd_t cmd = {
+        .command = "demo",
+        .help = "Puts the device in demo mode to send sensor data then wait to recieve commands to act upon",
+        .hint = NULL,
+        .func = &cli_demo,
+    };
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
+}

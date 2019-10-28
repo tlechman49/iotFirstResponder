@@ -8,13 +8,13 @@
 
 char wifi_task::_ssid[32] = "";
 char wifi_task::_pwd[64] = "";
-IPAddress wifi_task::_ip;
+IPAddress wifi_task::_ip(0,0,0,0);
 int wifi_task::_isIpStatic = 0;
 
 // Lines 18 to 20 are Static IP configurations
 IPAddress static_ip(192,168,1,12);
-IPAddress gateway(192,168,1,1);
-IPAddress subnet(255,255,255,0);
+const IPAddress gateway(192,168,1,1);
+const IPAddress subnet(255,255,255,0);
 
 IPAddress wifi_task::host_ip(192,168,1,1); 
 WiFiClient wifi_task::client;
@@ -62,7 +62,7 @@ void TaskWiFi(void *pvParameters)
 
         if( ( ulNotifiedValue & 0x08 ) != 0 )
         {
-            /* Bit 2 was set - process whichever event is represented by bit 2. */
+            /* Bit 3 was set - process whichever event is represented by bit 3. */
             wifiTask.receive();
         }
 
@@ -94,6 +94,7 @@ int wifi_task::connect()
     //is true if IP is set to static in the CLI otherwise DHCP is used
     if (_isIpStatic)
     {
+        setIpFromChipId(); // use the chip IDs to create unique IP addresses (hopefully our chips dont have similar internal MACs)
         WiFi.config(static_ip,gateway,subnet);
     }
     WiFi.begin(_ssid, _pwd);
@@ -224,4 +225,13 @@ int wifi_task::setMessage(const char* writeMessage) // allows user to write data
 void wifi_task::getMessage(char* readMessage)   // displays data received from wifi_task.receive()
 {
     strlcpy(readMessage, _readMessage, 32); 
+}
+
+void wifi_task::setIpFromChipId()
+{
+    uint8_t chipid[6];
+
+    esp_efuse_read_mac(chipid);
+
+    static_ip[3] = chipid[5];
 }

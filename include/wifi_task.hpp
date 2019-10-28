@@ -24,6 +24,7 @@ class wifi_task
         int receive();
         static int setMessage(const char* writeMessage);
         static void getMessage(char* readMessage);
+        
     private:
         static char _ssid[32];
         static char _pwd[64];
@@ -35,5 +36,7 @@ class wifi_task
         static char _readMessage[32];
         static char _writeMessage[32];
         String tempString;
+
+        void setIpFromChipId();
 
 };

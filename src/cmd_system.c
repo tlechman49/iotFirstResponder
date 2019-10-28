@@ -54,7 +54,11 @@ void register_system(void)
 static int get_version(int argc, char **argv)
 {
     esp_chip_info_t info;
+    uint8_t chipid[6];
+
+    esp_efuse_read_mac(chipid);
     esp_chip_info(&info);
+
     printf("IDF Version:%s\r\n", esp_get_idf_version());
     printf("Chip info:\r\n");
     printf("\tmodel:%s\r\n", info.model == CHIP_ESP32 ? "ESP32" : "Unknow");
@@ -66,6 +70,8 @@ static int get_version(int argc, char **argv)
            info.features & CHIP_FEATURE_EMB_FLASH ? "/Embedded-Flash:" : "/External-Flash:",
            spi_flash_get_chip_size() / (1024 * 1024), " MB");
     printf("\trevision number:%d\r\n", info.revision);
+
+    printf("eFuse Mac: %02x:%02x:%02x:%02x:%02x:%02x\n",chipid[0], chipid[1], chipid[2], chipid[3], chipid[4], chipid[5]);
     return 0;
 }
 

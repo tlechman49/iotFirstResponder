@@ -41,6 +41,9 @@ void reg_get_temp(void);
 int cli_get_co2(int argc, char **argv);
 void reg_get_co2(void);
 
+int cli_demo(int argc, char **argv);
+void reg_demo(void);
+
 #ifdef __cplusplus
 }
 #endif
