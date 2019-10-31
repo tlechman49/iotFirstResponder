@@ -483,12 +483,7 @@ int wifi(int argc, char **argv)
     // informs wifi task to begin connection procedure
     if (wifi_args.connect->count)
     {
-        xTaskNotify( taskHandleWiFi, 0x01, eSetBits );
-        xTaskNotifyWait( 0x00,      /* Don't clear any notification bits on entry. */
-                         ULONG_MAX, /* Reset the notification value to 0 on exit. */
-                         &ulNotifiedValue, /* Notified value pass out in
-                                              ulNotifiedValue. */
-                         portMAX_DELAY );  /* Block indefinitely. */
+        if (notifyWiFiAndWait(0x01, &ulNotifiedValue, portMAX_DELAY))   return 1;
         u8RetVal += ulNotifiedValue;
     }
 
@@ -501,34 +496,19 @@ int wifi(int argc, char **argv)
 
     if (wifi_args.tcpClient->count)
     {
-        xTaskNotify( taskHandleWiFi, 0x02, eSetBits );
-        xTaskNotifyWait( 0x00,      /* Don't clear any notification bits on entry. */
-                         ULONG_MAX, /* Reset the notification value to 0 on exit. */
-                         &ulNotifiedValue, /* Notified value pass out in
-                                              ulNotifiedValue. */
-                         portMAX_DELAY );  /* Block indefinitely. */
+        if (notifyWiFiAndWait(0x02, &ulNotifiedValue, portMAX_DELAY))   return 1;
         u8RetVal += ulNotifiedValue;
     }
 
     if (wifi_args.transmit->count)
     {
-        xTaskNotify( taskHandleWiFi, 0x04, eSetBits );
-        xTaskNotifyWait( 0x00,      /* Don't clear any notification bits on entry. */
-                         ULONG_MAX, /* Reset the notification value to 0 on exit. */
-                         &ulNotifiedValue, /* Notified value pass out in
-                                              ulNotifiedValue. */
-                         portMAX_DELAY );  /* Block indefinitely. */
+        if (notifyWiFiAndWait(0x04, &ulNotifiedValue, portMAX_DELAY))   return 1;
         u8RetVal += ulNotifiedValue;
     }
 
     if (wifi_args.receive->count)
     {
-        xTaskNotify( taskHandleWiFi, 0x08, eSetBits );
-        xTaskNotifyWait( 0x00,      /* Don't clear any notification bits on entry. */
-                         ULONG_MAX, /* Reset the notification value to 0 on exit. */
-                         &ulNotifiedValue, /* Notified value pass out in
-                                              ulNotifiedValue. */
-                         portMAX_DELAY );  /* Block indefinitely. */
+        if (notifyWiFiAndWait(0x08, &ulNotifiedValue, portMAX_DELAY))   return 1;
         u8RetVal += ulNotifiedValue;
     }
 
@@ -571,7 +551,7 @@ void reg_wifi(void)
         arg_lit0("r", "tcp_receive", "Receive data from TCP Server");
     wifi_args.display =
         arg_lit0("d", "display_message", "Display message read over TCP");
-    wifi_args.end = arg_end(4);
+    wifi_args.end = arg_end(10);
 
     const esp_console_cmd_t cmd = {
         .command = "wifi",
@@ -646,32 +626,42 @@ void reg_get_co2(void)
     ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
 }
 
+struct {
+    struct arg_lit *begin;
+    struct arg_end *end;
+} demo_args;
+
 // demo features of the device for presentation
 int cli_demo(int argc, char **argv)
 {
+    int nerrors = arg_parse(argc, argv, (void **) &wifi_args);
+    if (nerrors != 0) 
+    {
+        arg_print_errors(stderr, wifi_args.end, argv[0]);
+        return 1;
+    }
+
     uint32_t ulNotifiedValue;
 
     printf("\r\nDemo starting...\r\n");
 
-    // set wifi ssid and pwd 
-    // we should be set to start hardcoding the network of the pi since this demo will
-    // be fed back to our headless scheme
-    if (wifi_task::setSSID("INSERT WIFI HERE"))     return 1; //set ssid, fail out if not set
-    if (wifi_task::setPwd("INSERT PWD HERE"))       return 1; //set pwd, fail out if not set
-    if (wifi_task::setIpStatic(1))                  return 1; //set static ip, fail out if not set
+    if (demo_args.begin->count)
+    {
+        // set wifi ssid and pwd 
+        // we should be set to start hardcoding the network of the pi since this demo will
+        // be fed back to our headless scheme
+        if (wifi_task::setSSID("INSERT WIFI HERE"))     return 1; //set ssid, fail out if not set
+        if (wifi_task::setPwd("INSERT PWD HERE"))       return 1; //set pwd, fail out if not set
+        if (wifi_task::setIpStatic(1))                  return 1; //set static ip, fail out if not set
 
-    // connect to wifi
-    xTaskNotify( taskHandleWiFi, 0x01, eSetBits );
-    xTaskNotifyWait( 0x00,      /* Don't clear any notification bits on entry. */
-                     ULONG_MAX, /* Reset the notification value to 0 on exit. */
-                     &ulNotifiedValue, /* Notified value pass out in
-                                          ulNotifiedValue. */
-                     portMAX_DELAY );  /* Block indefinitely. */
+        // connect to wifi
+        if (notifyWiFiAndWait(0x01, &ulNotifiedValue, portMAX_DELAY))   return 1;
+        if (ulNotifiedValue)                                            return 1; //fail out if not connected to wifi
 
-    if (ulNotifiedValue)                            return 1; //fail out if not connected to wifi
-
-    // begin tcp client
-
+        // begin tcp client
+        if (notifyWiFiAndWait(0x02, &ulNotifiedValue, portMAX_DELAY))   return 1;
+        if (ulNotifiedValue)                                            return 1; //fail out if tcp client doesn't start
+    }
 
     // read sensors
 
@@ -687,11 +677,16 @@ int cli_demo(int argc, char **argv)
 // register demo to the cli
 void reg_demo(void)
 {
+    demo_args.begin =
+        arg_lit0("b", "begin", "Begin demo for the first time, initializes wireless connections");
+    demo_args.end = arg_end(1);
+    
     const esp_console_cmd_t cmd = {
         .command = "demo",
         .help = "Puts the device in demo mode to send sensor data then wait to recieve commands to act upon",
         .hint = NULL,
         .func = &cli_demo,
-    };
+        .argtable = &demo_args,
+};
     ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
 }

@@ -4,6 +4,8 @@
 
 void TaskWiFi(void *pvParameters);
 
+int notifyWiFiAndWait(uint32_t notifyValue, uint32_t * ulNotifiedValue, TickType_t xTicksToWait);
+
 class wifi_task
 {
     public:

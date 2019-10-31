@@ -71,6 +71,19 @@ void TaskWiFi(void *pvParameters)
     }
 }
 
+int notifyWiFiAndWait(uint32_t notifyValue, uint32_t * ulNotifiedValue, TickType_t xTicksToWait)
+{
+    int u8RetVal = 0;
+
+    u8RetVal += xTaskNotify( taskHandleWiFi, notifyValue, eSetBits );
+    u8RetVal += xTaskNotifyWait( 0x00,      /* Don't clear any notification bits on entry. */
+                                 ULONG_MAX, /* Reset the notification value to 0 on exit. */
+                                 ulNotifiedValue, /* Notified value pass out in
+                                                      ulNotifiedValue. */
+                                 xTicksToWait );  /* Block based on ticks to wait */
+    return u8RetVal;
+}
+
 wifi_task::wifi_task(){
     strcpy(_ssid, "");
     strcpy(_pwd, "");
