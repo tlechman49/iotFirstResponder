@@ -3,6 +3,7 @@
 #include "main.hpp"
 #include "wifi_task.hpp"
 #include "sensor_task.hpp"
+#include "output_tasks.hpp"
 
 #if CONFIG_FREERTOS_UNICORE
 #define ARDUINO_RUNNING_CORE 0
@@ -14,6 +15,7 @@
 TaskHandle_t taskHandleCLI = NULL;
 TaskHandle_t taskHandleWiFi = NULL;
 TaskHandle_t taskHandleSensor = NULL;
+TaskHandle_t taskHandleOnboardLed = NULL;
 
 // the setup function runs once when you press reset or power the board
 void setup()
@@ -34,7 +36,7 @@ void setup()
         ,
         4096 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
-        NULL, 2 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+        NULL, 1 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
         &taskHandleSensor, ARDUINO_RUNNING_CORE);
   
@@ -46,6 +48,8 @@ void setup()
         NULL, 1 // Priority
         ,
         &taskHandleCLI, ARDUINO_RUNNING_CORE);
+
+    createOutputTasks();
   
     // Now the task scheduler, which takes over control of scheduling individual tasks, 
     // is automatically started.

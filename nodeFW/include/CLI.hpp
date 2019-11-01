@@ -44,6 +44,9 @@ void reg_get_co2(void);
 int cli_demo(int argc, char **argv);
 void reg_demo(void);
 
+int onboard_led(int argc, char **argv);
+void reg_onboard_led(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -19,7 +19,7 @@ void TaskSensor(void *pvParameters)
     //task loop
     for (;;)
     {
-        vTaskDelay(1000);
+        vTaskDelay(10000);
     }
 }
 
@@ -28,11 +28,6 @@ TMP3X::TMP3X()
 {
     adc1_config_width(ADC_WIDTH_BIT_12);
     adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_0);
-}
-
-TMP3X::~TMP3X()
-{
-    ;
 }
 
 //reads temperature from pin 36 only.. can be changed by changing the channel .. but this should be fine
@@ -56,16 +51,6 @@ int TMP3X::readTemp()
 double TMP3X::getTemp()
 {
     return _temp; 
-}
-
-CCS_CO2::CCS_CO2()
-{
-    ;
-}
-
-CCS_CO2::~CCS_CO2()
-{
-    ;
 }
 
 int CCS_CO2::begin()

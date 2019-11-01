@@ -166,6 +166,12 @@ void register_commands()
     //sensor tasks
     reg_get_co2();
     reg_get_temp();
+
+    //demo
+    reg_demo();
+
+    //outputs
+    reg_onboard_led();
 }
 
 // Example command get_foo
@@ -634,14 +640,15 @@ struct {
 // demo features of the device for presentation
 int cli_demo(int argc, char **argv)
 {
-    int nerrors = arg_parse(argc, argv, (void **) &wifi_args);
+    int nerrors = arg_parse(argc, argv, (void **) &demo_args);
     if (nerrors != 0) 
     {
-        arg_print_errors(stderr, wifi_args.end, argv[0]);
+        arg_print_errors(stderr, demo_args.end, argv[0]);
         return 1;
     }
 
     uint32_t ulNotifiedValue;
+    uint32_t period;
 
     printf("\r\nDemo starting...\r\n");
 
@@ -670,6 +677,7 @@ int cli_demo(int argc, char **argv)
     // wait to recieve message from tcp server
 
     // blink on board led according to message
+    //xTaskNotify( taskHandleOnboardLed, period, eSetValueWithOverwrite );
 
     return 0;
 }
@@ -689,4 +697,44 @@ void reg_demo(void)
         .argtable = &demo_args,
 };
     ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
+}
+
+struct {
+    struct arg_int *period;
+    struct arg_end *end;
+} onboard_led_args;
+
+// start the onboard led blinking at a given period
+int onboard_led(int argc, char **argv)
+{
+    int nerrors = arg_parse(argc, argv, (void **) &onboard_led_args);
+    if (nerrors != 0) 
+    {
+        arg_print_errors(stderr, onboard_led_args.end, argv[0]);
+        return 1;
+    }
+
+    uint32_t period = (uint32_t)onboard_led_args.period->ival[0];
+    printf("Starting LED blink at period of %d ms\r\n", period);
+
+    xTaskNotify( taskHandleOnboardLed, period, eSetValueWithOverwrite );
+    
+    return 0;
+}
+
+// register onboard led to the cli
+void reg_onboard_led(void)
+{
+    onboard_led_args.period =
+        arg_int1("p", "period", "", "Set period of onboard led blink");
+    onboard_led_args.end = arg_end(1);
+
+    const esp_console_cmd_t cmd = {
+        .command = "onboard_led",
+        .help = "Blinks onboard led at specified period",
+        .hint = NULL,
+        .func = &onboard_led,
+        .argtable = &onboard_led_args,
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }
