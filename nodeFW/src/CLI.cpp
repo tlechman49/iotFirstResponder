@@ -648,7 +648,7 @@ int cli_demo(int argc, char **argv)
     }
 
     uint32_t ulNotifiedValue;
-    uint32_t period;
+    // uint32_t period;
 
     printf("\r\nDemo starting...\r\n");
 

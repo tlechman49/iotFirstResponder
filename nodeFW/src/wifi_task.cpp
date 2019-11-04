@@ -45,25 +45,25 @@ void TaskWiFi(void *pvParameters)
         if( ( ulNotifiedValue & 0x01 ) != 0 )
         {
             /* Bit 0 was set - process whichever event is represented by bit 0. */
-            wifiTask.connect();
+            ulRetVal = wifiTask.connect();
         }
 
         if( ( ulNotifiedValue & 0x02 ) != 0 )
         {
             /* Bit 1 was set - process whichever event is represented by bit 1. */
-            wifiTask.tcpClient();
+            ulRetVal = wifiTask.tcpClient();
         }
 
         if( ( ulNotifiedValue & 0x04 ) != 0 )
         {
             /* Bit 2 was set - process whichever event is represented by bit 2. */
-            wifiTask.transmit();
+            ulRetVal = wifiTask.transmit();
         }
 
         if( ( ulNotifiedValue & 0x08 ) != 0 )
         {
             /* Bit 3 was set - process whichever event is represented by bit 3. */
-            wifiTask.receive();
+            ulRetVal = wifiTask.receive();
         }
 
         // Set return notification to the return value, 0 == SUCCESS
@@ -73,15 +73,20 @@ void TaskWiFi(void *pvParameters)
 
 int notifyWiFiAndWait(uint32_t notifyValue, uint32_t * ulNotifiedValue, TickType_t xTicksToWait)
 {
-    int u8RetVal = 0;
-
-    u8RetVal += xTaskNotify( taskHandleWiFi, notifyValue, eSetBits );
-    u8RetVal += xTaskNotifyWait( 0x00,      /* Don't clear any notification bits on entry. */
+    xTaskNotify( taskHandleWiFi, notifyValue, eSetBits );
+    if (pdPASS == xTaskNotifyWait( 0x00,      /* Don't clear any notification bits on entry. */
                                  ULONG_MAX, /* Reset the notification value to 0 on exit. */
                                  ulNotifiedValue, /* Notified value pass out in
                                                       ulNotifiedValue. */
-                                 xTicksToWait );  /* Block based on ticks to wait */
-    return u8RetVal;
+                                 xTicksToWait ))  /* Block based on ticks to wait */
+    {
+        return 0;
+    }
+    else
+    {
+        return 1;
+    }
+    
 }
 
 wifi_task::wifi_task(){
