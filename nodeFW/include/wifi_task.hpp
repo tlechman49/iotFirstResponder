@@ -6,6 +6,8 @@ void TaskWiFi(void *pvParameters);
 
 int notifyWiFiAndWait(uint32_t notifyValue, uint32_t * ulNotifiedValue, TickType_t xTicksToWait);
 
+void TaskTcpReceive(void *pvParameters);
+
 class wifi_task
 {
     public:
@@ -26,7 +28,9 @@ class wifi_task
         int receive();
         static int setMessage(const char* writeMessage);
         static void getMessage(char* readMessage);
-        
+        static char _readMessage[32];
+        static WiFiClient client;
+
     private:
         static char _ssid[32];
         static char _pwd[64];
@@ -34,10 +38,7 @@ class wifi_task
         static int _isIpStatic;
 
         static IPAddress host_ip;
-        static WiFiClient client;
-        static char _readMessage[32];
         static char _writeMessage[32];
-        String tempString;
 
         void setIpFromChipId();
 

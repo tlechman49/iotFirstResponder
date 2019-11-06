@@ -6,21 +6,28 @@
 #include "string.h"
 #include "WiFi.h"
 
+#if CONFIG_FREERTOS_UNICORE
+#define ARDUINO_WIFI_CORE 1
+#else
+#define ARDUINO_WIFI_CORE 0
+#endif
+
 char wifi_task::_ssid[32] = "";
 char wifi_task::_pwd[64] = "";
 IPAddress wifi_task::_ip(0,0,0,0);
 int wifi_task::_isIpStatic = 0;
 
-// Lines 18 to 20 are Static IP configurations
+// Static IP configurations
 IPAddress static_ip(192,168,1,12);
 const IPAddress gateway(192,168,1,1);
 const IPAddress subnet(255,255,255,0);
 
-IPAddress wifi_task::host_ip(192,168,1,1); 
+IPAddress wifi_task::host_ip(192,168,86,61); 
+#define TCP_PORT 5005
+
 WiFiClient wifi_task::client;
 char wifi_task::_readMessage[32] = "";  // message read from TCP server
 char wifi_task::_writeMessage[32] = ""; // message sent to TCP server
-String tempString = ""; // used in reading data from TCP server
 
 void TaskWiFi(void *pvParameters) 
 {
@@ -45,25 +52,38 @@ void TaskWiFi(void *pvParameters)
         if( ( ulNotifiedValue & 0x01 ) != 0 )
         {
             /* Bit 0 was set - process whichever event is represented by bit 0. */
-            ulRetVal = wifiTask.connect();
+            ulRetVal += wifiTask.connect();
         }
 
         if( ( ulNotifiedValue & 0x02 ) != 0 )
         {
             /* Bit 1 was set - process whichever event is represented by bit 1. */
-            ulRetVal = wifiTask.tcpClient();
+            ulRetVal += wifiTask.tcpClient();
+            if (ulRetVal == 0)
+            {
+                xTaskCreatePinnedToCore(
+                    TaskTcpReceive, "TaskTcpReceive" // A name just for humans
+                    ,
+                    4096 // This stack size can be checked & adjusted by reading the Stack Highwater
+                    ,
+                    &wifiTask //pvParameter set to pointer to the wifiTask class
+                    , 
+                    1 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+                    ,
+                    &taskHandleTcpReceive, ARDUINO_WIFI_CORE);
+            }
         }
 
         if( ( ulNotifiedValue & 0x04 ) != 0 )
         {
             /* Bit 2 was set - process whichever event is represented by bit 2. */
-            ulRetVal = wifiTask.transmit();
+            ulRetVal += wifiTask.transmit();
         }
 
         if( ( ulNotifiedValue & 0x08 ) != 0 )
         {
             /* Bit 3 was set - process whichever event is represented by bit 3. */
-            ulRetVal = wifiTask.receive();
+            ulRetVal += wifiTask.receive();
         }
 
         // Set return notification to the return value, 0 == SUCCESS
@@ -86,7 +106,23 @@ int notifyWiFiAndWait(uint32_t notifyValue, uint32_t * ulNotifiedValue, TickType
     {
         return 1;
     }
-    
+}
+
+// check tcp receive buffer every 50ms and write what is received into the _readMessage char array
+void TaskTcpReceive(void *pvParameters) 
+{
+    wifi_task * wifiTask = (wifi_task *)pvParameters;
+    String tempString = "";
+
+    for (;;) // A Task shall never return or exit.
+    {
+        vTaskDelay(50);
+        if (wifiTask->client.available())
+        {
+            tempString = wifiTask->client.readString();
+            strcpy(wifiTask->_readMessage, tempString.c_str());
+        }
+    }
 }
 
 wifi_task::wifi_task(){
@@ -184,7 +220,7 @@ int wifi_task::tcpClient()  // establishes TCP client role
 {
     int connectTimeout = 0;
 
-    client.connect(host_ip,5005);   // connect to TCP server (Raspberry Pi)
+    client.connect(host_ip, TCP_PORT);   // connect to TCP server (Raspberry Pi)
     while ((!client.connected()) && connectTimeout < 100) // 10 seconds
     {
         vTaskDelay(100);
@@ -215,6 +251,7 @@ int wifi_task::transmit() // sends data to TCP server
 
 int wifi_task::receive()    // receives data from TCP server
 {
+    String tempString = "";
     if (client.available())
     {
         tempString = client.readString();

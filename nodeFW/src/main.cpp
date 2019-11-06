@@ -16,6 +16,7 @@ TaskHandle_t taskHandleCLI = NULL;
 TaskHandle_t taskHandleWiFi = NULL;
 TaskHandle_t taskHandleSensor = NULL;
 TaskHandle_t taskHandleOnboardLed = NULL;
+TaskHandle_t taskHandleTcpReceive = NULL;
 
 // the setup function runs once when you press reset or power the board
 void setup()
