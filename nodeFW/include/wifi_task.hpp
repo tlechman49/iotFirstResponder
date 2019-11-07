@@ -2,6 +2,14 @@
 
 #include "WiFi.h"
 
+//defines for task notifications
+#define CONNECT_WIFI    0x01
+#define ESTABLISH_TCP   0x02
+#define TRANSMIT_TCP    0x04
+#define RECEIVE_TCP     0x08
+#define FROM_CLI        0x10
+#define FROM_SENSOR     0x20
+
 void TaskWiFi(void *pvParameters);
 
 int notifyWiFiAndWait(uint32_t notifyValue, uint32_t * ulNotifiedValue, TickType_t xTicksToWait);
@@ -30,6 +38,8 @@ class wifi_task
         static void getMessage(char* readMessage);
         static char _readMessage[32];
         static WiFiClient client;
+
+        int parseReceivedData();
 
     private:
         static char _ssid[32];

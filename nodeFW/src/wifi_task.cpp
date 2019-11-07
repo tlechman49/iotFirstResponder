@@ -7,9 +7,9 @@
 #include "WiFi.h"
 
 #if CONFIG_FREERTOS_UNICORE
-#define ARDUINO_WIFI_CORE 1
-#else
 #define ARDUINO_WIFI_CORE 0
+#else
+#define ARDUINO_WIFI_CORE 1
 #endif
 
 char wifi_task::_ssid[32] = "";
@@ -34,11 +34,13 @@ void TaskWiFi(void *pvParameters)
     (void)pvParameters;
     uint32_t ulNotifiedValue;
     uint32_t ulRetVal = 0;
+    TaskHandle_t fromTask;
 
     wifi_task wifiTask;
   
     for (;;) // A Task shall never return or exit.
     {
+        fromTask = NULL;
         // Bits in this RTOS task's notification value are set by the notifying
         // tasks and interrupts to indicate which events have occurred. */
         xTaskNotifyWait( 0x00,      /* Don't clear any notification bits on entry. */
@@ -49,13 +51,13 @@ void TaskWiFi(void *pvParameters)
 
         /* Process any events that have been latched in the notified value. */
 
-        if( ( ulNotifiedValue & 0x01 ) != 0 )
+        if( ( ulNotifiedValue & CONNECT_WIFI ) != 0 )
         {
             /* Bit 0 was set - process whichever event is represented by bit 0. */
             ulRetVal += wifiTask.connect();
         }
 
-        if( ( ulNotifiedValue & 0x02 ) != 0 )
+        if( ( ulNotifiedValue & ESTABLISH_TCP ) != 0 )
         {
             /* Bit 1 was set - process whichever event is represented by bit 1. */
             ulRetVal += wifiTask.tcpClient();
@@ -74,20 +76,35 @@ void TaskWiFi(void *pvParameters)
             }
         }
 
-        if( ( ulNotifiedValue & 0x04 ) != 0 )
+        if( ( ulNotifiedValue & TRANSMIT_TCP ) != 0 )
         {
             /* Bit 2 was set - process whichever event is represented by bit 2. */
             ulRetVal += wifiTask.transmit();
         }
 
-        if( ( ulNotifiedValue & 0x08 ) != 0 )
+        if( ( ulNotifiedValue & RECEIVE_TCP ) != 0 )
         {
             /* Bit 3 was set - process whichever event is represented by bit 3. */
             ulRetVal += wifiTask.receive();
         }
 
-        // Set return notification to the return value, 0 == SUCCESS
-        xTaskNotify( taskHandleCLI, ulRetVal, eSetBits );
+        if( ( ulNotifiedValue & FROM_CLI ) != 0 )
+        {
+            /* Bit 4 was set - process whichever event is represented by bit 4. */
+            fromTask = taskHandleCLI;
+        }
+
+        if( ( ulNotifiedValue & FROM_SENSOR ) != 0 )
+        {
+            /* Bit 5 was set - process whichever event is represented by bit 5. */
+            fromTask = taskHandleSensor;
+        }     
+
+        if (fromTask != NULL)
+        {
+            // Set return notification to the return value, 0 == SUCCESS
+            xTaskNotify( fromTask, ulRetVal, eSetBits );
+        }
     }
 }
 
@@ -119,8 +136,10 @@ void TaskTcpReceive(void *pvParameters)
         vTaskDelay(50);
         if (wifiTask->client.available())
         {
+            printf("message received!\r\n");
             tempString = wifiTask->client.readString();
             strcpy(wifiTask->_readMessage, tempString.c_str());
+            wifiTask->parseReceivedData();
         }
     }
 }
@@ -240,7 +259,7 @@ int wifi_task::transmit() // sends data to TCP server
 {
     if (client.connected())
     {
-        client.println(_writeMessage);
+        client.print(_writeMessage);
         return 0;
     }
     else
@@ -289,4 +308,17 @@ void wifi_task::setIpFromChipId()
     esp_efuse_read_mac(chipid);
 
     static_ip[3] = chipid[5];
+}
+
+int wifi_task::parseReceivedData()
+{
+    printf("parsing message\r\n");
+    uint32_t period = 0;
+    sscanf(_readMessage, "%u", &period);
+    printf("message scanned\r\n");
+
+    xTaskNotify( taskHandleOnboardLed, period, eSetValueWithOverwrite );
+    printf("led notified\r\n");
+
+    return 0;
 }

@@ -4,27 +4,74 @@
 #include "driver/gpio.h"
 #include "driver/adc.h"
 #include "esp_adc_cal.h"
+#include "wifi_task.hpp"
+#include "main.hpp"
 
 //set statics at compile time
 double TMP3X::_temp = 0;
 uint16_t CCS_CO2::_co2 = 0;
 
-adc1_channel_t TMP3X::channel = ADC1_CHANNEL_0;     //GPIO34 if ADC1, GPIO14 if ADC2
+adc1_channel_t TMP3X::channel = ADC1_CHANNEL_0;     //GPIO36
 adc_atten_t TMP3X::atten = ADC_ATTEN_DB_0;
 adc_unit_t TMP3X::unit = ADC_UNIT_1;
 esp_adc_cal_characteristics_t * TMP3X::adc_chars = NULL;
 
 Adafruit_CCS811 ccs;
 
-
 // sensor task function
 void TaskSensor(void *pvParameters) 
 {
     (void)pvParameters;
+    uint32_t ulNotifiedValue;
+    uint8_t useFakeData = 0;
+    char message[32] = "0,0,0";
+
+    //wait until the system is informed to start
+    xTaskNotifyWait( 0x00,      /* Don't clear any notification bits on entry. */
+                     ULONG_MAX, /* Reset the notification value to 0 on exit. */
+                     &ulNotifiedValue, /* Notified value pass out in
+                                          ulNotifiedValue. */
+                     portMAX_DELAY );  /* Block indefinitely. */
+
+    /* Process any events that have been latched in the notified value. */
+    if( ( ulNotifiedValue & 0x01 ) != 0 )
+    {
+        /* Bit 0 was set - process whichever event is represented by bit 0. */
+        useFakeData = 1;
+    }
+
+    CCS_CO2 co2;
+    TMP3X tmp;
+
+    // initialize sensors if not using fake data
+    if (useFakeData == 0)
+    {
+        co2.begin();
+    }
 
     //task loop
     for (;;)
     {
+        //generate fake data
+        if (useFakeData)
+        {
+            CCS_CO2::setCo2(millis() % 800);
+            TMP3X::setTemp(millis() % 40);
+        }
+        // record sensor data
+        else
+        {
+            co2.readCo2();
+            tmp.readTemp();
+        }
+        
+        //prepare message
+        sprintf(message, "%u,%f,%u", CCS_CO2::getCo2(), TMP3X::getTemp(), 0); //format is "co2,temp,flame"
+        wifi_task::setMessage(message);
+
+        //tell wifi task to transmit
+        notifyWiFiAndWait((FROM_SENSOR | TRANSMIT_TCP), NULL, portMAX_DELAY);
+
         vTaskDelay(10000);
     }
 }
@@ -54,7 +101,7 @@ int TMP3X::readTemp()
     adc_reading = adc1_get_raw((adc1_channel_t)channel);
     double V =  esp_adc_cal_raw_to_voltage(adc_reading, adc_chars);
 
-    //convert to volts then to celcius
+    //convert to celcius
     _temp = (V-500)/10.0;      // in celcius
     return 0;
 }
@@ -63,6 +110,11 @@ int TMP3X::readTemp()
 double TMP3X::getTemp()
 {
     return _temp; 
+}
+
+void TMP3X::setTemp(double temp)
+{
+    _temp = temp;
 }
 
 int CCS_CO2::begin()
@@ -105,4 +157,9 @@ int CCS_CO2::readCo2()
 uint16_t CCS_CO2::getCo2()
 {
     return _co2;
+}
+
+void CCS_CO2::setCo2(uint16_t co2)
+{
+    _co2 = co2;
 }

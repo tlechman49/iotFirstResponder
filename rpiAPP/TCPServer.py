@@ -8,8 +8,8 @@ TCP_IP = '0.0.0.0'
 TCP_PORT = 5005
 BUFFER_SIZE = 1024
 
-O2_threshold = 1000
-temp_threshold = 100
+O2_threshold = 600
+temp_threshold = 35
 
 class SensorNode:
 
@@ -18,11 +18,11 @@ class SensorNode:
         self._addr = addr
         self._identifier = identifier
         self._O2 = 500
-        self._temp = 70
+        self._temp = 22.0
         self._flame = 0
         self._alert = 0
-        self._currentCommand = ""
-        self._lastCommand = ""
+        self._currentCommand = "1000"
+        self._lastCommand = "1000"
         
     def getO2(self):
         return self._O2
@@ -46,15 +46,15 @@ class SensorNode:
         return self._alert
 
     def transmit(self):
-        if self._currentCommand != self._lastCommand:
-            self._conn.send(self._currentCommand.encode())
-            self._lastCommand = self._currentCommand
+        #if self._currentCommand != self._lastCommand:
+        self._conn.send(self._currentCommand.encode())
+        self._lastCommand = self._currentCommand
 
     def receive(self):
         data = self._conn.recv(BUFFER_SIZE).decode()     # data = "O2,temp,flame"
         splitData = data.split(',')                     # splitData = ["02", "temp", "flame"]
         self._O2 = int(splitData[0])
-        self._temp = int(splitData[1])
+        self._temp = float(splitData[1])
         self._flame = int(splitData[2])
 
     def analyze(self):
@@ -95,18 +95,19 @@ if __name__ == "__main__":
                     nodeDict[identifier] = len(nodes)-1       # Not 100% sure if this will be useful yet, but this dict relates position in nodes array to identifier
 
         elif user_input == 3:
-            for node in nodes:
-                node.receive()
-                node.analyze()
-                print("Node Address: %s\n" % (node.getAddr()[0]))
-                print("O2 Sensor Reading: %d\n" % (node.getO2()))
-                print("Temperature Sensor Reading: %d\n" % (node.getTemp()))
-                print("Fire Detected: %s\n" % (node.getFlame()))
-                
-                if node.getAlert() == 1:
-                    print("ALERT\n")
-                    
-                print("\n")
+            while(1):
+                for node in nodes:
+                    node.receive()
+                    node.analyze()
+                    print("Node Address: %s\n" % (node.getAddr()[0]))
+                    print("O2 Sensor Reading: %d\n" % (node.getO2()))
+                    print("Temperature Sensor Reading: %f\n" % (node.getTemp()))
+                    print("Fire Detected: %s\n" % (node.getFlame()))
+
+                    if node.getAlert() == 1:
+                        print("ALERT\n")
+
+                    print("\n")
 
         elif user_input == 4:
             for node in nodes:

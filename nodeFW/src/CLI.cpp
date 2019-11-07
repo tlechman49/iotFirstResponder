@@ -489,7 +489,7 @@ int wifi(int argc, char **argv)
     // informs wifi task to begin connection procedure
     if (wifi_args.connect->count)
     {
-        if (notifyWiFiAndWait(0x01, &ulNotifiedValue, portMAX_DELAY))   return 1;
+        if (notifyWiFiAndWait((FROM_CLI | CONNECT_WIFI), &ulNotifiedValue, portMAX_DELAY))   return 1;
         u8RetVal += ulNotifiedValue;
     }
 
@@ -502,19 +502,19 @@ int wifi(int argc, char **argv)
 
     if (wifi_args.tcpClient->count)
     {
-        if (notifyWiFiAndWait(0x02, &ulNotifiedValue, portMAX_DELAY))   return 1;
+        if (notifyWiFiAndWait((FROM_CLI | ESTABLISH_TCP), &ulNotifiedValue, portMAX_DELAY))   return 1;
         u8RetVal += ulNotifiedValue;
     }
 
     if (wifi_args.transmit->count)
     {
-        if (notifyWiFiAndWait(0x04, &ulNotifiedValue, portMAX_DELAY))   return 1;
+        if (notifyWiFiAndWait((FROM_CLI | TRANSMIT_TCP), &ulNotifiedValue, portMAX_DELAY))   return 1;
         u8RetVal += ulNotifiedValue;
     }
 
     if (wifi_args.receive->count)
     {
-        if (notifyWiFiAndWait(0x08, &ulNotifiedValue, portMAX_DELAY))   return 1;
+        if (notifyWiFiAndWait((FROM_CLI | RECEIVE_TCP), &ulNotifiedValue, portMAX_DELAY))   return 1;
         u8RetVal += ulNotifiedValue;
     }
 
@@ -618,12 +618,17 @@ int cli_get_co2(int argc, char **argv)
     }
 
     CCS_CO2 co2;
-    if (co2_args.begin->count){
-    if (co2.begin())
+
+    // initialize co2 sensor
+    if (co2_args.begin->count)
     {
-        return 1;
+        if (co2.begin())
+        {
+            return 1;
+        }
     }
-    }
+
+    // read sensor the print to cli
     if (co2.readCo2() == 0)
     {
         uint16_t co2_level = co2.getCo2();
@@ -640,8 +645,9 @@ int cli_get_co2(int argc, char **argv)
 void reg_get_co2(void)
 {
     co2_args.begin =
-    arg_lit0("b", "begin", "Begin sensor for the first time, initializes sensor");
+        arg_lit0("b", "begin", "Begin sensor for the first time, initializes sensor");
     co2_args.end = arg_end(1);
+
     const esp_console_cmd_t cmd = {
         .command = "get_co2",
         .help = "Reads data from c02 sensor",
@@ -653,7 +659,7 @@ void reg_get_co2(void)
 }
 
 struct {
-    struct arg_lit *begin;
+    struct arg_lit *wireless;
     struct arg_end *end;
 } demo_args;
 
@@ -667,37 +673,16 @@ int cli_demo(int argc, char **argv)
         return 1;
     }
 
-    uint32_t ulNotifiedValue;
-    // uint32_t period;
-
     printf("\r\nDemo starting...\r\n");
 
-    if (demo_args.begin->count)
+    if (demo_args.wireless->count)
     {
-        // set wifi ssid and pwd 
-        // we should be set to start hardcoding the network of the pi since this demo will
-        // be fed back to our headless scheme
-        if (wifi_task::setSSID("INSERT WIFI HERE"))     return 1; //set ssid, fail out if not set
-        if (wifi_task::setPwd("INSERT PWD HERE"))       return 1; //set pwd, fail out if not set
-        if (wifi_task::setIpStatic(1))                  return 1; //set static ip, fail out if not set
-
-        // connect to wifi
-        if (notifyWiFiAndWait(0x01, &ulNotifiedValue, portMAX_DELAY))   return 1;
-        if (ulNotifiedValue)                                            return 1; //fail out if not connected to wifi
-
-        // begin tcp client
-        if (notifyWiFiAndWait(0x02, &ulNotifiedValue, portMAX_DELAY))   return 1;
-        if (ulNotifiedValue)                                            return 1; //fail out if tcp client doesn't start
+        xTaskNotify( taskHandleSensor, 0x01, eSetBits );
     }
-
-    // read sensors
-
-    // send sensors to tcp server
-
-    // wait to recieve message from tcp server
-
-    // blink on board led according to message
-    //xTaskNotify( taskHandleOnboardLed, period, eSetValueWithOverwrite );
+    else 
+    {
+        xTaskNotify( taskHandleSensor, 0x00, eSetBits );
+    }
 
     return 0;
 }
@@ -705,13 +690,13 @@ int cli_demo(int argc, char **argv)
 // register demo to the cli
 void reg_demo(void)
 {
-    demo_args.begin =
-        arg_lit0("b", "begin", "Begin demo for the first time, initializes wireless connections");
+    demo_args.wireless =
+        arg_lit0("w", "wireless", "Send tcp data with fake sensor data");
     demo_args.end = arg_end(1);
     
     const esp_console_cmd_t cmd = {
         .command = "demo",
-        .help = "Puts the device in demo mode to send sensor data then wait to recieve commands to act upon",
+        .help = "**Must connect to TCP server first** Puts the device in demo mode to send sensor data automatically",
         .hint = NULL,
         .func = &cli_demo,
         .argtable = &demo_args,
