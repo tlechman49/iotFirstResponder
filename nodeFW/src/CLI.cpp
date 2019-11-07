@@ -600,13 +600,29 @@ void reg_get_temp(void)
 
 
 //CLI command to get co2 levels
+
+struct {
+    struct arg_lit *begin;
+    struct arg_end *end;
+} co2_args;
+
+
 //things to do: add include literal argument -i for initalize -g get shit... cool!
 int cli_get_co2(int argc, char **argv)
 {
+    int nerrors = arg_parse(argc, argv, (void **) &co2_args);
+    if (nerrors != 0) 
+    {
+        arg_print_errors(stderr, co2_args.end, argv[0]);
+        return 1;
+    }
+
     CCS_CO2 co2;
+    if (co2_args.begin->count){
     if (co2.begin())
     {
         return 1;
+    }
     }
     if (co2.readCo2() == 0)
     {
@@ -623,11 +639,15 @@ int cli_get_co2(int argc, char **argv)
 // register get co2 to the cli
 void reg_get_co2(void)
 {
+    co2_args.begin =
+    arg_lit0("b", "begin", "Begin sensor for the first time, initializes sensor");
+    co2_args.end = arg_end(1);
     const esp_console_cmd_t cmd = {
         .command = "get_co2",
         .help = "Reads data from c02 sensor",
         .hint = NULL,
         .func = &cli_get_co2,
+        .argtable = &co2_args,
     };
     ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
 }

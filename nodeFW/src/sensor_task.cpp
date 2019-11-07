@@ -3,10 +3,16 @@
 #include "esp_adc_cal.h"
 #include "driver/gpio.h"
 #include "driver/adc.h"
+#include "esp_adc_cal.h"
 
 //set statics at compile time
 double TMP3X::_temp = 0;
 uint16_t CCS_CO2::_co2 = 0;
+
+adc1_channel_t TMP3X::channel = ADC1_CHANNEL_0;     //GPIO34 if ADC1, GPIO14 if ADC2
+adc_atten_t TMP3X::atten = ADC_ATTEN_DB_0;
+adc_unit_t TMP3X::unit = ADC_UNIT_1;
+esp_adc_cal_characteristics_t * TMP3X::adc_chars = NULL;
 
 Adafruit_CCS811 ccs;
 
@@ -26,24 +32,30 @@ void TaskSensor(void *pvParameters)
 //initializes the temperature sensor
 TMP3X::TMP3X()
 {
-    adc1_config_width(ADC_WIDTH_BIT_12);
-    adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_0);
+    //Configure ADC
+    if (unit == ADC_UNIT_1) {
+        adc1_config_width(ADC_WIDTH_BIT_12);
+        adc1_config_channel_atten(channel, atten);
+    } else {
+        adc2_config_channel_atten((adc2_channel_t)channel, atten);
+    }
+
+    //Characterize ADC
+    adc_chars = (esp_adc_cal_characteristics_t *)calloc(1, sizeof(esp_adc_cal_characteristics_t));
+    esp_adc_cal_value_t val_type = esp_adc_cal_characterize(unit, atten, ADC_WIDTH_BIT_12, 1100, adc_chars);
+    //print_char_val_type(val_type);
+
 }
 
 //reads temperature from pin 36 only.. can be changed by changing the channel .. but this should be fine
 int TMP3X::readTemp()
 {
-    int adcval = adc1_get_raw(ADC1_CHANNEL_0);
-
-    //check if it gave a bad value
-    if (adcval == -1)
-    {
-        return 1;
-    }
+    uint32_t adc_reading = 0;
+    adc_reading = adc1_get_raw((adc1_channel_t)channel);
+    double V =  esp_adc_cal_raw_to_voltage(adc_reading, adc_chars);
 
     //convert to volts then to celcius
-    double v = (adcval / 4095.0) * 1.1; //in volts
-    _temp = (v - 0.5) * 100;      // in celcius
+    _temp = (V-500)/10.0;      // in celcius
     return 0;
 }
 
@@ -60,7 +72,7 @@ int CCS_CO2::begin()
     {
         return 1;
     }
-    while (!ccs.available() && availTimeout < 30) // 3 seconds
+    while (!ccs.available() && availTimeout < 100) // 3 seconds
     {
         vTaskDelay(100);
         availTimeout++;
@@ -76,11 +88,12 @@ int CCS_CO2::readCo2()
         if (!ccs.readData())
         {
             uint16_t co2_level = ccs.geteCO2();
-            return co2_level;
+            _co2 = co2_level;
+            return 0;
         }
         else
         {
-            return -1;
+            return 1;
         }
     }
     else
