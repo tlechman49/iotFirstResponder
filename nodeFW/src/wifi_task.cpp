@@ -247,6 +247,10 @@ int wifi_task::tcpClient()  // establishes TCP client role
     }
     if (client.connected())
     {
+        // once a node is connected, send over a piece of its MAC address
+        uint8_t chipid[6];
+        esp_efuse_read_mac(chipid);
+        client.print(chipid[5]);
         return 0;
     }
     else

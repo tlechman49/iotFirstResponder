@@ -85,7 +85,7 @@ if __name__ == "__main__":
 		if identifier in nodeDict.keys():
 			pass
 		else:
-			identifier = addr[0].split('.')[-1]
+			identifier = conn.recv(BUFFER_SIZE).decode()	# use a portion of the node's MAC address as an identifier
 			nodeDict[identifier] = len(nodes)
 			newNode = SensorNode(conn, addr, identifier)
 			nodes.append(newNode)
@@ -97,7 +97,8 @@ if __name__ == "__main__":
 				node.receive()
 
 				node.analyze()
-				print("Node Address: %s\n" % (node.getAddr()[0]))
+				print("Node: %s\n" % (node.getIdentifier()))
+				print("IP Address: %s\n" % (node.getAddr()[0]))
 				print("O2 Sensor Reading: %d\n" % (node.getO2()))
 				print("Temperature Sensor Reading: %f\n" % (node.getTemp()))
 				print("Fire Detected: %s\n" % (node.getFlame()))
