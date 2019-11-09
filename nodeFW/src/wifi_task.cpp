@@ -22,7 +22,7 @@ IPAddress static_ip(192,168,1,12);
 const IPAddress gateway(192,168,1,1);
 const IPAddress subnet(255,255,255,0);
 
-IPAddress wifi_task::host_ip(192,168,86,61); 
+IPAddress wifi_task::host_ip(10,0,0,228); 
 #define TCP_PORT 5005
 
 WiFiClient wifi_task::client;
