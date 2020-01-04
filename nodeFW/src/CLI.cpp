@@ -166,6 +166,7 @@ void register_commands()
     //sensor tasks
     reg_get_co2();
     reg_get_temp();
+    reg_get_flame();
 
     //demo
     reg_demo();
@@ -654,6 +655,35 @@ void reg_get_co2(void)
         .hint = NULL,
         .func = &cli_get_co2,
         .argtable = &co2_args,
+    };
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
+}
+
+// cli command to get the temperature
+int cli_get_flame(int argc, char **argv)
+{
+    Flame flame;
+    if (flame.readFlame() == 0)
+    {
+        int fl = flame.getFlame();
+        printf("Flame =  %d\r\n", fl);
+        return 0;
+    }
+    else
+    {
+        return 1;
+    }
+    
+}
+
+// register get flame to the cli
+void reg_get_flame(void)
+{
+    const esp_console_cmd_t cmd = {
+        .command = "get_flame",
+        .help = "Reads data from flame sensor on PIN 39 and returns Boolean value",
+        .hint = NULL,
+        .func = &cli_get_flame,
     };
     ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
 }

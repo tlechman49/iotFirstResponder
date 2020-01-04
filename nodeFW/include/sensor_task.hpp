@@ -35,3 +35,23 @@ class CCS_CO2
     private:
         static uint16_t _co2;
 };
+
+class Flame
+{
+    public:
+        Flame();
+
+        static adc1_channel_t channel;
+        static adc_atten_t atten;
+        static adc_unit_t unit;
+        static esp_adc_cal_characteristics_t *adc_chars;
+
+        static uint32_t flameThresh;
+
+        int readFlame();
+        static int getFlame();
+        static void setFlame(int flame);
+
+    private:
+        static int _flame;
+};

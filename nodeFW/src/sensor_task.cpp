@@ -9,12 +9,19 @@
 
 //set statics at compile time
 double TMP3X::_temp = 0;
+int Flame::_flame = 0;
 uint16_t CCS_CO2::_co2 = 0;
 
 adc1_channel_t TMP3X::channel = ADC1_CHANNEL_0;     //GPIO36
 adc_atten_t TMP3X::atten = ADC_ATTEN_DB_0;
 adc_unit_t TMP3X::unit = ADC_UNIT_1;
 esp_adc_cal_characteristics_t * TMP3X::adc_chars = NULL;
+
+adc1_channel_t Flame::channel = ADC1_CHANNEL_3;     //GPIO39
+adc_atten_t Flame::atten = ADC_ATTEN_DB_11;
+adc_unit_t Flame::unit = ADC_UNIT_1;
+esp_adc_cal_characteristics_t * Flame::adc_chars = NULL;
+uint32_t Flame::flameThresh = 1250; //Conversion of 512 to 1250mV
 
 Adafruit_CCS811 ccs;
 
@@ -162,4 +169,45 @@ uint16_t CCS_CO2::getCo2()
 void CCS_CO2::setCo2(uint16_t co2)
 {
     _co2 = co2;
+}
+
+
+Flame::Flame()
+{
+    //Configure ADC
+    if (unit == ADC_UNIT_1) {
+        adc1_config_width(ADC_WIDTH_BIT_12);
+        adc1_config_channel_atten(channel, atten);
+    } else {
+        adc2_config_channel_atten((adc2_channel_t)channel, atten);
+    }
+
+    //Characterize ADC
+    adc_chars = (esp_adc_cal_characteristics_t *)calloc(1, sizeof(esp_adc_cal_characteristics_t));
+    esp_adc_cal_value_t val_type = esp_adc_cal_characterize(unit, atten, ADC_WIDTH_BIT_12, 1100, adc_chars);
+    //print_char_val_type(val_type);
+
+}
+
+//reads flame from pin 39 only.. can be changed by changing the channel .. but this should be fine
+int Flame::readFlame()
+{
+    uint32_t adc_reading = 0;
+    adc_reading = adc1_get_raw((adc1_channel_t)channel);
+    uint32_t V =  esp_adc_cal_raw_to_voltage(adc_reading, adc_chars);
+
+    //convert to binary
+    _flame = (int)(V < flameThresh);      
+    return 0;
+}
+
+//gets the last read value from the ~flame~ sensor 
+int Flame::getFlame()
+{
+    return _flame; 
+}
+
+void Flame::setFlame(int flame)
+{
+    _flame = flame;
 }
