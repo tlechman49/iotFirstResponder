@@ -576,8 +576,8 @@ int cli_get_temp(int argc, char **argv)
     TMP3X tmp;
     if (tmp.readTemp() == 0)
     {
-        double temp = tmp.getTemp();
-        printf("Temp =  %f degrees C\r\n", temp);
+        uint16_t temp = tmp.getTemp();
+        printf("Temp =  %u.%u degrees C\r\n", temp/10, temp%10);
         return 0;
     }
     else
@@ -665,8 +665,8 @@ int cli_get_flame(int argc, char **argv)
     Flame flame;
     if (flame.readFlame() == 0)
     {
-        int fl = flame.getFlame();
-        printf("Flame =  %d\r\n", fl);
+        uint16_t fl = flame.getFlame();
+        printf("Flame =  %u\r\n", fl);
         return 0;
     }
     else

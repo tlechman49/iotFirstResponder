@@ -6,6 +6,7 @@
 
 void TaskSensor(void *pvParameters);
 
+int isValueChanged(uint16_t last, uint16_t current);
 class TMP3X
 {
     public:
@@ -17,11 +18,11 @@ class TMP3X
         static esp_adc_cal_characteristics_t *adc_chars;
 
         int readTemp();
-        static double getTemp();
-        static void setTemp(double temp);
+        static uint16_t getTemp();
+        static void setTemp(uint16_t temp);
 
     private:
-        static double _temp;
+        static uint16_t _temp;
 };
 
 class CCS_CO2
@@ -49,9 +50,9 @@ class Flame
         static uint32_t flameThresh;
 
         int readFlame();
-        static int getFlame();
-        static void setFlame(int flame);
+        static uint16_t getFlame();
+        static void setFlame(uint16_t flame);
 
     private:
-        static int _flame;
+        static uint16_t _flame;
 };

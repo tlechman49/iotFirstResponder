@@ -7,9 +7,14 @@
 #include "wifi_task.hpp"
 #include "main.hpp"
 
+// short and long delays for sensor reads in ms
+#define USE_DYNAMIC_TIMING 1
+#define SHORT_DELAY 5000 
+#define LONG_DELAY  10000
+
 //set statics at compile time
-double TMP3X::_temp = 0;
-int Flame::_flame = 0;
+uint16_t Flame::_flame = 0;
+uint16_t TMP3X::_temp = 0;
 uint16_t CCS_CO2::_co2 = 0;
 
 adc1_channel_t TMP3X::channel = ADC1_CHANNEL_0;     //GPIO36
@@ -21,17 +26,25 @@ adc1_channel_t Flame::channel = ADC1_CHANNEL_3;     //GPIO39
 adc_atten_t Flame::atten = ADC_ATTEN_DB_11;
 adc_unit_t Flame::unit = ADC_UNIT_1;
 esp_adc_cal_characteristics_t * Flame::adc_chars = NULL;
-uint32_t Flame::flameThresh = 1250; //Conversion of 512 to 1250mV
+uint32_t Flame::flameThresh = 1250; //arbitrary threshold
 
 Adafruit_CCS811 ccs;
 
 // sensor task function
 void TaskSensor(void *pvParameters) 
 {
+    // prevent unused message
     (void)pvParameters;
+
+    // initialization values
     uint32_t ulNotifiedValue;
     uint8_t useFakeData = 0;
+
+    // loop variables
     char message[32] = "0,0,0";
+    uint16_t lastSentTemp = -100; // initializing to unlikely values
+    uint16_t lastSentCo2 = -1; // initializing to unlikely values
+    uint16_t lastSentFlame = -1;
 
     //wait until the system is informed to start
     xTaskNotifyWait( 0x00,      /* Don't clear any notification bits on entry. */
@@ -40,7 +53,7 @@ void TaskSensor(void *pvParameters)
                                           ulNotifiedValue. */
                      portMAX_DELAY );  /* Block indefinitely. */
 
-    /* Process any events that have been latched in the notified value. */
+    // set some parameters used mainly for debugging
     if( ( ulNotifiedValue & 0x01 ) != 0 )
     {
         /* Bit 0 was set - process whichever event is represented by bit 0. */
@@ -49,6 +62,7 @@ void TaskSensor(void *pvParameters)
 
     CCS_CO2 co2;
     TMP3X tmp;
+    Flame fl;
 
     // initialize sensors if not using fake data
     if (useFakeData == 0)
@@ -62,25 +76,46 @@ void TaskSensor(void *pvParameters)
         //generate fake data
         if (useFakeData)
         {
-            CCS_CO2::setCo2(millis() % 800);
-            TMP3X::setTemp(millis() % 40);
+            co2.setCo2(millis() % 800);
+            tmp.setTemp(millis() % 40);
+            fl.setFlame(millis() % 1);
         }
         // record sensor data
         else
         {
             co2.readCo2();
             tmp.readTemp();
+            fl.readFlame();
         }
         
-        //prepare message
-        sprintf(message, "%u,%f,%u", CCS_CO2::getCo2(), TMP3X::getTemp(), 0); //format is "co2,temp,flame"
-        wifi_task::setMessage(message);
+        // check if the sensor values have changed
+        uint8_t isValChanged = (isValueChanged(lastSentTemp/10, tmp.getTemp()/10) |
+                                isValueChanged(lastSentCo2/10, co2.getCo2()/10) |
+                                isValueChanged(lastSentFlame, fl.getFlame()));
+        if ((USE_DYNAMIC_TIMING == 0) || isValChanged)
+        {
+            //prepare message
+            //format is "co2,temp,flame"
+            sprintf(message, "%u,%u.%u,%u", co2.getCo2(), tmp.getTemp()/10, tmp.getTemp()%10, fl.getFlame()); 
+            wifi_task::setMessage(message);
 
-        //tell wifi task to transmit
-        notifyWiFiAndWait((FROM_SENSOR | TRANSMIT_TCP), NULL, portMAX_DELAY);
+            //tell wifi task to transmit
+            notifyWiFiAndWait((FROM_SENSOR | TRANSMIT_TCP), NULL, portMAX_DELAY);
 
-        vTaskDelay(10000);
+            vTaskDelay(SHORT_DELAY);
+        }
+        else
+        {
+            vTaskDelay(LONG_DELAY);
+        }
     }
+}
+
+// checks if the values are equal
+// to be readjusted later to some degree (10% or something)
+int isValueChanged(uint16_t last, uint16_t current)
+{
+    return !(last == current);
 }
 
 //initializes the temperature sensor
@@ -96,34 +131,42 @@ TMP3X::TMP3X()
 
     //Characterize ADC
     adc_chars = (esp_adc_cal_characteristics_t *)calloc(1, sizeof(esp_adc_cal_characteristics_t));
-    esp_adc_cal_value_t val_type = esp_adc_cal_characterize(unit, atten, ADC_WIDTH_BIT_12, 1100, adc_chars);
-    //print_char_val_type(val_type);
-
+    esp_adc_cal_characterize(unit, atten, ADC_WIDTH_BIT_12, 1100, adc_chars);
 }
 
-//reads temperature from pin 36 only.. can be changed by changing the channel .. but this should be fine
+//reads temperature from pin 36 only.. can be changed by changing the channel .. 
+// but this should be fine
+// 0 == SUCCESS
 int TMP3X::readTemp()
 {
+    // get raw adc value
     uint32_t adc_reading = 0;
     adc_reading = adc1_get_raw((adc1_channel_t)channel);
-    double V =  esp_adc_cal_raw_to_voltage(adc_reading, adc_chars);
 
-    //convert to celcius
-    _temp = (V-500)/10.0;      // in celcius
+    //calibarate vs adc characteristics
+    uint32_t V =  esp_adc_cal_raw_to_voltage(adc_reading, adc_chars);
+
+    //convert to (celcius *10)
+    _temp = (uint16_t)(V-500);      // in (celcius * 10)
     return 0;
 }
 
 //gets the last read value from the temperature sensor
-double TMP3X::getTemp()
+// (celcius * 10)
+uint16_t TMP3X::getTemp()
 {
     return _temp; 
 }
 
-void TMP3X::setTemp(double temp)
+// set temperature value for debugging purposes
+// (celcius * 10)
+void TMP3X::setTemp(uint16_t temp)
 {
     _temp = temp;
 }
 
+// initialize c02 sensor
+// 0 == SUCCESS
 int CCS_CO2::begin()
 {
     int availTimeout = 0;
@@ -140,6 +183,7 @@ int CCS_CO2::begin()
 }
 
 // reads the co2 sensor and stores to static
+// 0 == SUCCESS
 int CCS_CO2::readCo2()
 {
     if (ccs.available())
@@ -161,11 +205,13 @@ int CCS_CO2::readCo2()
     }
 }
 
+// used to asynchronously get the last read co2 value
 uint16_t CCS_CO2::getCo2()
 {
     return _co2;
 }
 
+// manually sets the co2 value for debugging purposes
 void CCS_CO2::setCo2(uint16_t co2)
 {
     _co2 = co2;
@@ -184,9 +230,7 @@ Flame::Flame()
 
     //Characterize ADC
     adc_chars = (esp_adc_cal_characteristics_t *)calloc(1, sizeof(esp_adc_cal_characteristics_t));
-    esp_adc_cal_value_t val_type = esp_adc_cal_characterize(unit, atten, ADC_WIDTH_BIT_12, 1100, adc_chars);
-    //print_char_val_type(val_type);
-
+    esp_adc_cal_characterize(unit, atten, ADC_WIDTH_BIT_12, 1100, adc_chars);
 }
 
 //reads flame from pin 39 only.. can be changed by changing the channel .. but this should be fine
@@ -196,18 +240,18 @@ int Flame::readFlame()
     adc_reading = adc1_get_raw((adc1_channel_t)channel);
     uint32_t V =  esp_adc_cal_raw_to_voltage(adc_reading, adc_chars);
 
-    //convert to binary
-    _flame = (int)(V < flameThresh);      
+    //convert
+    _flame = (uint16_t)(V < flameThresh);      
     return 0;
 }
 
 //gets the last read value from the ~flame~ sensor 
-int Flame::getFlame()
+uint16_t Flame::getFlame()
 {
     return _flame; 
 }
 
-void Flame::setFlame(int flame)
+void Flame::setFlame(uint16_t flame)
 {
     _flame = flame;
 }
