@@ -50,6 +50,9 @@ void reg_demo(void);
 int onboard_led(int argc, char **argv);
 void reg_onboard_led(void);
 
+int led_strip(int argc, char **argv);
+void reg_led_strip(void);
+
 #ifdef __cplusplus
 }
 #endif

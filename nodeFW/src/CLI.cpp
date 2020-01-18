@@ -18,6 +18,7 @@
 #include "main.hpp"
 #include "wifi_task.hpp"
 #include "sensor_task.hpp"
+#include "output_tasks.hpp"
 
 // Initializes the CLI interface using the C style ESP32 IDF setup instead of Arduino serial
 void initialize_console()
@@ -173,6 +174,7 @@ void register_commands()
 
     //outputs
     reg_onboard_led();
+    reg_led_strip();
 }
 
 // Example command get_foo
@@ -770,6 +772,46 @@ void reg_onboard_led(void)
         .hint = NULL,
         .func = &onboard_led,
         .argtable = &onboard_led_args,
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
+}
+
+struct {
+    struct arg_int *dir_set;
+    struct arg_end *end;
+} led_strip_args;
+
+// run wipe animation on led strip on specified pin in specified direction
+int led_strip(int argc, char **argv)
+{
+    int nerrors = arg_parse(argc, argv, (void **) &led_strip_args);
+    if (nerrors != 0) 
+    {
+        arg_print_errors(stderr, led_strip_args.end, argv[0]);
+        return 1;
+    }
+
+    uint32_t mode = (uint32_t)led_strip_args.dir_set->ival[0];
+    printf("Starting LED strip in mode: %d\r\n", mode);
+
+    xTaskNotify( taskHandleLedStrip, mode, eSetValueWithOverwrite );
+    
+    return 0;
+}
+
+// register led strip to the cli
+void reg_led_strip(void)
+{
+    led_strip_args.dir_set = 
+        arg_int1("s", "dir", "<0|1|2>", "Sets the direction <off|away from port|toward port>");
+    led_strip_args.end = arg_end(1);
+
+    const esp_console_cmd_t cmd = {
+        .command = "led_strip",
+        .help = "Run the wipe animation on an led strip",
+        .hint = NULL,
+        .func = &led_strip,
+        .argtable = &led_strip_args,
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }
