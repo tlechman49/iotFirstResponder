@@ -84,8 +84,11 @@ class App(threading.Thread):
         button.grid(row=2, column=0, columnspan=2)
     
     def createMainWindow(self):
+
+        # comment out to bypass start (also uncomment the line in run)
         self.initiateNodes()
         self.currentWindow.destroy()
+
         self.createCurrentWindow()
 
         # paned base window
@@ -164,7 +167,9 @@ class App(threading.Thread):
         self.root = tk.Tk()
         self.root.withdraw()
         
+        # comment out init window and uncomment main for debugging the main window
         self.createInitWindow()
+        # self.createMainWindow()
 
         self.root.mainloop()
 

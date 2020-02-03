@@ -752,10 +752,10 @@ int onboard_led(int argc, char **argv)
     }
 
     uint32_t period = (uint32_t)onboard_led_args.period->ival[0];
-    printf("Starting LED blink at period of %d ms\r\n", period);
+    printf("Starting LED blink at period of %u ms\r\n", period);
+    sprintf(wifi_task::_readMessage, "0.13.%u", period);
 
-    xTaskNotify( taskHandleOnboardLed, period, eSetValueWithOverwrite );
-    
+    xTaskNotify( taskHandleOutputManager, 0, eSetValueWithOverwrite );
     return 0;
 }
 
@@ -793,9 +793,9 @@ int led_strip(int argc, char **argv)
 
     uint32_t mode = (uint32_t)led_strip_args.dir_set->ival[0];
     printf("Starting LED strip in mode: %d\r\n", mode);
+    sprintf(wifi_task::_readMessage, "1.21.%u", mode);
 
-    xTaskNotify( taskHandleLedStrip, mode, eSetValueWithOverwrite );
-    
+    xTaskNotify( taskHandleOutputManager, 0, eSetValueWithOverwrite );
     return 0;
 }
 
@@ -808,7 +808,7 @@ void reg_led_strip(void)
 
     const esp_console_cmd_t cmd = {
         .command = "led_strip",
-        .help = "Run the wipe animation on an led strip",
+        .help = "Run the wipe animation on an led strip at pin 21",
         .hint = NULL,
         .func = &led_strip,
         .argtable = &led_strip_args,

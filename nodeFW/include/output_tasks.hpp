@@ -3,7 +3,25 @@
 #include "Arduino.h"
 #include "FastLED.h"
 
-void createOutputTasks();
+void TaskOutputManager(void *pvParameters);
+
+//stores commands to be sent
+struct command_s
+{
+    uint32_t    type;
+    uint32_t    pin;
+    uint32_t    msg;
+};
+
+//stores tasks that have been created
+struct outTask_s
+{
+    uint32_t        type{(uint32_t) -1 };
+    uint32_t        pin{ 0 };
+    TaskHandle_t    handle{ NULL };
+};
+
+int createNewTask(command_s cmd, outTask_s * taskArray);
 
 void TaskOnboardLed(void *pvParameters);
 void TaskLedStrip(void *pvParameters);

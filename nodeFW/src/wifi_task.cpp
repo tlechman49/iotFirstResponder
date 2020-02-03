@@ -22,7 +22,7 @@ IPAddress static_ip(192,168,1,12);
 const IPAddress gateway(192,168,1,1);
 const IPAddress subnet(255,255,255,0);
 
-IPAddress wifi_task::host_ip(10,0,0,228); 
+IPAddress wifi_task::host_ip(192,168,1,1); 
 #define TCP_PORT 5005
 
 WiFiClient wifi_task::client;
@@ -63,16 +63,7 @@ void TaskWiFi(void *pvParameters)
             ulRetVal += wifiTask.tcpClient();
             if (ulRetVal == 0)
             {
-                xTaskCreatePinnedToCore(
-                    TaskTcpReceive, "TaskTcpReceive" // A name just for humans
-                    ,
-                    4096 // This stack size can be checked & adjusted by reading the Stack Highwater
-                    ,
-                    &wifiTask //pvParameter set to pointer to the wifiTask class
-                    , 
-                    1 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-                    ,
-                    &taskHandleTcpReceive, ARDUINO_WIFI_CORE);
+                createTcpRecieve(&wifiTask);
             }
         }
 
@@ -125,6 +116,20 @@ int notifyWiFiAndWait(uint32_t notifyValue, uint32_t * ulNotifiedValue, TickType
     }
 }
 
+void createTcpRecieve(wifi_task * wifiTaskPtr)
+{
+    xTaskCreatePinnedToCore(
+        TaskTcpReceive, "TaskTcpReceive" // A name just for humans
+        ,
+        2048 // This stack size can be checked & adjusted by reading the Stack Highwater
+        ,
+        wifiTaskPtr //pvParameter set to pointer to the wifiTask class
+        , 
+        1 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+        ,
+        &taskHandleTcpReceive, ARDUINO_WIFI_CORE);
+}
+
 // check tcp receive buffer every 50ms and write what is received into the _readMessage char array
 void TaskTcpReceive(void *pvParameters) 
 {
@@ -136,20 +141,30 @@ void TaskTcpReceive(void *pvParameters)
         vTaskDelay(50);
         if (wifiTask->client.available())
         {
-            printf("message received!\r\n");
+            // printf("message received!\r\n");
             tempString = wifiTask->client.readString();
             strcpy(wifiTask->_readMessage, tempString.c_str());
-            wifiTask->parseReceivedData();
+            xTaskNotify( taskHandleOutputManager, 0, eSetValueWithOverwrite );
         }
     }
 }
 
 wifi_task::wifi_task(){
-    strcpy(_ssid, "");
-    strcpy(_pwd, "");
+    strcpy(_ssid, "FirstResponderNet");
+    strcpy(_pwd, "iotfrpass");
 
     strcpy(_readMessage, "");
     strcpy(_writeMessage, "");
+
+    vTaskDelay(100);
+    if (connect() == 0)
+    {
+        vTaskDelay(100);
+        if (tcpClient() == 0)
+        {
+            createTcpRecieve(this);
+        }
+    }
 }
 
 wifi_task::~wifi_task(){
@@ -314,15 +329,15 @@ void wifi_task::setIpFromChipId()
     static_ip[3] = chipid[5];
 }
 
-int wifi_task::parseReceivedData()
-{
-    printf("parsing message\r\n");
-    uint32_t period = 0;
-    sscanf(_readMessage, "%u", &period);
-    printf("message scanned\r\n");
+// int wifi_task::parseReceivedData()
+// {
+//     // printf("parsing message\r\n");
+//     uint32_t period = 0;
+//     sscanf(_readMessage, "%u", &period);
+//     // printf("message scanned\r\n");
 
-    xTaskNotify( taskHandleOnboardLed, period, eSetValueWithOverwrite );
-    printf("led notified\r\n");
+//     xTaskNotify( taskHandleOnboardLed, period, eSetValueWithOverwrite );
+//     // printf("led notified\r\n");
 
-    return 0;
-}
+//     return 0;
+// }

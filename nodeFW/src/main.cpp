@@ -18,6 +18,7 @@ TaskHandle_t taskHandleSensor = NULL;
 TaskHandle_t taskHandleOnboardLed = NULL;
 TaskHandle_t taskHandleTcpReceive = NULL;
 TaskHandle_t taskHandleLedStrip = NULL;
+TaskHandle_t taskHandleOutputManager = NULL;
 
 // the setup function runs once when you press reset or power the board
 void setup()
@@ -36,12 +37,21 @@ void setup()
     xTaskCreatePinnedToCore(
         TaskSensor, "TaskSensor" // A name just for humans
         ,
-        4096 // This stack size can be checked & adjusted by reading the Stack Highwater
+        1024 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
         NULL, 1 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
         &taskHandleSensor, ARDUINO_RUNNING_CORE);
   
+    xTaskCreatePinnedToCore(
+        TaskOutputManager, "TaskOutputManager"
+        , 
+        4096 // Stack size
+        ,
+        NULL, 1 // Priority
+        ,
+        &taskHandleOutputManager, ARDUINO_RUNNING_CORE);
+
     xTaskCreatePinnedToCore(
         TaskCLI, "TaskCLI"
         , 
@@ -50,8 +60,6 @@ void setup()
         NULL, 1 // Priority
         ,
         &taskHandleCLI, ARDUINO_RUNNING_CORE);
-
-    createOutputTasks();
   
     // Now the task scheduler, which takes over control of scheduling individual tasks, 
     // is automatically started.

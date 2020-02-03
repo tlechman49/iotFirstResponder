@@ -14,8 +14,6 @@ void TaskWiFi(void *pvParameters);
 
 int notifyWiFiAndWait(uint32_t notifyValue, uint32_t * ulNotifiedValue, TickType_t xTicksToWait);
 
-void TaskTcpReceive(void *pvParameters);
-
 class wifi_task
 {
     public:
@@ -39,7 +37,7 @@ class wifi_task
         static char _readMessage[32];
         static WiFiClient client;
 
-        int parseReceivedData();
+        // int parseReceivedData();
 
     private:
         static char _ssid[32];
@@ -53,3 +51,6 @@ class wifi_task
         void setIpFromChipId();
 
 };
+
+void createTcpRecieve(wifi_task * wifiTask);
+void TaskTcpReceive(void *pvParameters);
