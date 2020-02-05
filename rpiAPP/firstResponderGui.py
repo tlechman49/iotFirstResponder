@@ -27,23 +27,21 @@ class App(threading.Thread):
         global initiated, nodes, nodeDict
         number_of_nodes = int(self.nodesVar.get())
         print("Initiating " + str(number_of_nodes) + " node(s)...")
+        self.ecmuSet = ecmuClass.ecmuSet(number_of_nodes)
 
         # Initialize TCP Server socket
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.bind((TCP_IP, TCP_PORT))
 
         # Three-way Handshake with each TCP Client, build node array
-        while len(nodes) < number_of_nodes:
+        while self.ecmuSet.getLenNodeList() < self.ecmuSet.getMaxNodes():
             s.listen(1)
             conn, addr = s.accept()
-            identifier = addr[0].split('.')[-1]
-            if identifier in nodeDict.keys():
+            identifier = conn.recv(BUFFER_SIZE).decode()    # use a portion of the node's MAC address as an identifier
+            if self.ecmuSet.isEcmu(identifier):
                 pass
             else:
-                identifier = conn.recv(BUFFER_SIZE).decode()    # use a portion of the node's MAC address as an identifier
-                nodeDict[identifier] = len(nodes)
-                newNode = ecmuClass.ecmu(conn, addr, identifier)
-                nodes.append(newNode)
+                self.ecmuSet.addEcmu(conn, addr, identifier)
 
         initiated = 1
         print("Initiated!")
@@ -82,7 +80,7 @@ class App(threading.Thread):
         nodesLabel.grid(row=1, column=0, sticky="w")
         nodesEntry.grid(row=1, column=1)
         button.grid(row=2, column=0, columnspan=2)
-    
+
     def createMainWindow(self):
 
         # comment out to bypass start (also uncomment the line in run)
@@ -93,7 +91,7 @@ class App(threading.Thread):
 
         # paned base window
         window = ttk.PanedWindow(self.currentWindow, orient="horizontal")
-        
+
         # sidebar
         # TODO: format sidebar
         sidebar = tk.Frame(window, width=30, bg="white", height=550)
@@ -135,7 +133,7 @@ class App(threading.Thread):
 
         # packing / adding the components onto the display
         window.pack(fill="both", expand = False)
-        
+
         # sidebar
         window.add(sidebar)
         sidebarLabel.pack()
@@ -144,7 +142,7 @@ class App(threading.Thread):
 
         # main area
         window.add(mainArea)
-        
+
         mainArea.add(fpArea)
         fpArea.add(f1, state='disabled', text='   1 ')
         fpArea.add(f2, state='disabled', text='   2 ')
@@ -166,7 +164,7 @@ class App(threading.Thread):
     def run(self):
         self.root = tk.Tk()
         self.root.withdraw()
-        
+
         # comment out init window and uncomment main for debugging the main window
         self.createInitWindow()
         # self.createMainWindow()
@@ -185,29 +183,17 @@ if __name__ == "__main__":
     # Loop reading sensor data, displaying sensor data, and sending commands to node.  Break loop with Ctrl-C
     try:
         while True:
-            for node in nodes:
-                node.receive()
-
-                node.analyze()
-                print("Node: %s" % (node.getIdentifier()))
-                print("IP Address: %s" % (node.getAddr()[0]))
-                print("O2 Sensor Reading: %d" % (node.getO2()))
-                print("Temperature Sensor Reading: %f" % (node.getTemp()))
-                print("Fire Detected: %s" % (node.getFlame()))
+            app.ecmuSet.receive()
+            app.ecmuSet.analyze()
+            # app.ecmuSet.print()
+            for node in app.ecmuSet.nodeList:
                 app.idVar.set("Node " + str(node.getIdentifier()))
                 app.tempVar.set(str(node.getTemp()))
                 app.aqVar.set(str(node.getO2()))
                 app.nirVar.set("False" if node.getFlame() == 0 else "True")
 
-                if node.getAlert() == 1:
-                    print("ALERT")
-
-                print("\n")
-
-                node.transmit()
-
-                #sleep(1)
+            app.ecmuSet.transmit()
+            # sleep(1)
 
     except KeyboardInterrupt:
-        for node in nodes:
-            node.getConn().close()
+        app.ecmuSet.disconnect()
