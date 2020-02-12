@@ -91,7 +91,7 @@ class ecmu:
                 output.setCurMsg(output.getCurMsg())                    # this ensures we dont resend the same command
                 separator = ","                                         # set the separator (important for first run)
                 
-        if command is not "":
+        if command != "":
             self._conn.send(command.encode())
 
     # receive sensor data from node
