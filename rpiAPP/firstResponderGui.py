@@ -179,7 +179,9 @@ if __name__ == "__main__":
     print('***Welcome to IoT First Responder GUI***')
     while not initiated:
         sleep(1)
-
+        
+    app.ecmuSet.collectOutputs()
+    
     # Loop reading sensor data, displaying sensor data, and sending commands to node.  Break loop with Ctrl-C
     try:
         while True:

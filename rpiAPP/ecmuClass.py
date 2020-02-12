@@ -1,20 +1,46 @@
+import csv
+
 # defining some thresholds
 O2_threshold = 600
 temp_threshold = 35
 
 # defining output types to numeric values
 ONBOARD_LED = 0
-LED_STRIP = 1
+LED_STRIP   = 1
+DOOR_SERVO  = 2
+
 
 # class to store and work with individual outputs
-
-
 class ecmuOutput:
     def __init__(self, outputType, pin):
         self._outputType = outputType
         self._pin = pin
         self._curMsg = 0
         self._lastMsg = 0
+        
+    def getOutputType(self):
+        return self._outputType
+        
+    def getCurMsg(self):
+        return self._curMsg
+    
+    def setCurMsg(self, msg):
+        # check if a valid message is set
+        if (1):
+            self._lastMsg = self._curMsg
+            self._curMsg = msg
+            return 0
+        else:
+            return 1
+        
+    def isNewMsg(self):
+        if (self._curMsg is self._lastMsg):
+            return 0
+        else:
+            return 1
+    
+    def getString(self):
+        return ".".join([str(self._outputType), str(self._pin), str(self._curMsg)])
 
 
 # class used to store and work with individual nodes
@@ -27,8 +53,8 @@ class ecmu:
         self._temp = 22.0
         self._flame = 0
         self._alert = 0
-        self._currentCommand = "0.13.1000"
-        self._lastCommand = "0.13.1000"
+        # self._currentCommand = "0.13.1000"
+        # self._lastCommand = "0.13.1000"
         self._outputList = []
 
     def getO2(self):
@@ -51,12 +77,22 @@ class ecmu:
 
     def getAlert(self):
         return self._alert
+    
+    def addOutput(self, outType, pin):
+        self._outputList.append(ecmuOutput(outType, pin))
 
     # transmit output messages to node
     def transmit(self):
-        if self._currentCommand != self._lastCommand:
-            self._conn.send(self._currentCommand.encode())
-            self._lastCommand = self._currentCommand
+        separator = ""
+        command = ""
+        for output in self._outputList:
+            if output.isNewMsg():
+                command = separator.join([command, output.getString()]) # append to the command string
+                output.setCurMsg(output.getCurMsg())                    # this ensures we dont resend the same command
+                separator = ","                                         # set the separator (important for first run)
+                
+        if command is not "":
+            self._conn.send(command.encode())
 
     # receive sensor data from node
     def receive(self):
@@ -70,15 +106,18 @@ class ecmu:
     # analyze node data to perform automated operations
     def analyze(self):
         if (self._O2 > O2_threshold) or (self._temp > temp_threshold) or (self._flame == 1):
-            self._currentCommand = "0.13.1000"       # 1 -> LED on
-            self._alert = 1
+            for output in self._outputList:
+                if output.getOutputType() is ONBOARD_LED:
+                    output.setCurMsg(1000)
+                    self._alert = 1
         else:
-            self._currentCommand = "0.13.0"       # 0 -> LED off
-            self._alert = 0
+            for output in self._outputList:
+                if output.getOutputType() is ONBOARD_LED:
+                    output.setCurMsg(0)
+                    self._alert = 0
+
 
 # class used to store and work with the set of nodes
-
-
 class ecmuSet:
     def __init__(self, maxNodes):
         self.maxNodes = maxNodes
@@ -107,7 +146,14 @@ class ecmuSet:
 
     # collect the node output assignments from a csv and append to outputList
     def collectOutputs(self):
-        pass
+        with open('nodeOutputAssignments.csv', newline='') as csvFile:
+            reader = csv.DictReader(csvFile)
+            for row in reader:
+                # print(row)
+                for node in self.nodeList:
+                    if (int(row['identifier']) == int(node.getIdentifier())):
+                        # print("found matching ID!")
+                        node.addOutput(int(row['type']), int(row['pin']))                        
 
     # receive data from all nodes
     def receive(self):
@@ -122,7 +168,7 @@ class ecmuSet:
     # transmit data from all nodes
     def transmit(self):
         for node in self.nodeList:
-            node.receive()
+            node.transmit()
 
     # prints data from all nodes
     def print(self):
