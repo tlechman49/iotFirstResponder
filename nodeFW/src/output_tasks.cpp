@@ -287,7 +287,6 @@ LED::LED(const int pin)
     FastLED.show();
 }
 
-
 // brightest led propogates across strip
 // _dir == 0 -> forward
 // _dir == 1 -> backward
@@ -309,6 +308,7 @@ void LED::allOff()
     fill_solid(_leds, NUM_LEDS, CRGB::Black);
     FastLED.show();
 }
+
 
 void LED::show()
 {

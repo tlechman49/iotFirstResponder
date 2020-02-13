@@ -53,6 +53,9 @@ void reg_onboard_led(void);
 int led_strip(int argc, char **argv);
 void reg_led_strip(void);
 
+int servo(int argc, char **argv);
+void reg_servo(void);
+
 #ifdef __cplusplus
 }
 #endif

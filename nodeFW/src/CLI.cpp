@@ -19,6 +19,7 @@
 #include "wifi_task.hpp"
 #include "sensor_task.hpp"
 #include "output_tasks.hpp"
+#include "esp32-hal-ledc.h"
 
 // Initializes the CLI interface using the C style ESP32 IDF setup instead of Arduino serial
 void initialize_console()
@@ -175,6 +176,7 @@ void register_commands()
     //outputs
     reg_onboard_led();
     reg_led_strip();
+    reg_servo();
 }
 
 // Example command get_foo
@@ -226,7 +228,6 @@ int digital_read(int argc, char **argv)
     printf("Invalid pin number\r\n");
     return 1;
 }
-
 
 // register digital read to the cli
 void reg_digital_read(void)
@@ -353,6 +354,8 @@ int digital_write(int argc, char **argv)
     printf("Invalid pin number\r\n");
     return 1;
 }
+
+//Look Here for Digital Write function ^
 
 // register digital write to the cli
 void reg_digital_write(void)
@@ -812,6 +815,60 @@ void reg_led_strip(void)
         .hint = NULL,
         .func = &led_strip,
         .argtable = &led_strip_args,
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
+}
+
+struct {
+    struct arg_int *dir_set;
+    struct arg_end *end;
+} servo_args;
+
+// Open or close servo 1 single servo. 0 or 180 degrees.
+int servo(int argc, char **argv)
+{
+    int nerrors = arg_parse(argc, argv, (void **) &servo_args);
+    if (nerrors != 0) {
+       arg_print_errors(stderr, servo_args.end, argv[0]);
+       return 1;
+    }
+    ledcSetup(0, 50, 11);
+    ledcAttachPin(21, 0);
+
+    uint32_t position = 0;
+    position = (uint32_t)servo_args.dir_set->ival[0];
+    if (position == 0 || position == 1){
+        if (position == 0){
+           printf("*Servo pans to position 0*");
+           ledcWrite(0, 51);
+           return 0;
+        }
+        if (position == 1){
+           printf("*Servo pans to position 1*");
+           ledcWrite(0, 220);
+           return 0;
+       }
+    } else {
+        printf("Not a valid position. Choose either 0 or 1.");
+    };
+
+    sprintf(wifi_task::_readMessage, "1.21.%u", position);
+    xTaskNotify( taskHandleOutputManager, 0, eSetValueWithOverwrite );
+    return 0;
+}
+
+// register servo to the cli
+void reg_servo(void)
+{
+    servo_args.dir_set = arg_int1("s", "dir", "<0|1>", "Sets the direction at 0 or 90 degrees");
+    servo_args.end = arg_end(1);
+
+    const esp_console_cmd_t cmd = {
+        .command = "servo",
+        .help = "Run the servo to either 0 degrees or 90 degrees (0 or 1)",
+        .hint = NULL,
+        .func = &servo,
+        .argtable = &servo_args,
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }
