@@ -17,13 +17,13 @@ class ecmuOutput:
         self._pin = pin
         self._curMsg = 0
         self._lastMsg = 0
-        
+
     def getOutputType(self):
         return self._outputType
-        
+
     def getCurMsg(self):
         return self._curMsg
-    
+
     def setCurMsg(self, msg):
         # check if a valid message is set
         if (1):
@@ -32,13 +32,13 @@ class ecmuOutput:
             return 0
         else:
             return 1
-        
+
     def isNewMsg(self):
         if (self._curMsg is self._lastMsg):
             return 0
         else:
             return 1
-    
+
     def getString(self):
         return ".".join([str(self._outputType), str(self._pin), str(self._curMsg)])
 
@@ -77,7 +77,16 @@ class ecmu:
 
     def getAlert(self):
         return self._alert
-    
+
+    def setTemp(self,temp):
+        self._temp = temp
+
+    def setO2(self,O2):
+        self._O2 = O2
+
+    def setFlame(self,flame):
+        self._flame = flame
+
     def addOutput(self, outType, pin):
         self._outputList.append(ecmuOutput(outType, pin))
 
@@ -90,7 +99,7 @@ class ecmu:
                 command = separator.join([command, output.getString()]) # append to the command string
                 output.setCurMsg(output.getCurMsg())                    # this ensures we dont resend the same command
                 separator = ","                                         # set the separator (important for first run)
-                
+
         if command != "":
             self._conn.send(command.encode())
 
@@ -153,7 +162,7 @@ class ecmuSet:
                 for node in self.nodeList:
                     if (int(row['identifier']) == int(node.getIdentifier())):
                         # print("found matching ID!")
-                        node.addOutput(int(row['type']), int(row['pin']))                        
+                        node.addOutput(int(row['type']), int(row['pin']))
 
     # receive data from all nodes
     def receive(self):

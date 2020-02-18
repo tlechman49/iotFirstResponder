@@ -6,7 +6,7 @@ import threading
 from PIL import Image
 import socket
 from time import sleep
-
+import random
 import ecmuClass
 
 TCP_IP = '0.0.0.0'
@@ -32,7 +32,8 @@ class App(threading.Thread):
         # Initialize TCP Server socket
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.bind((TCP_IP, TCP_PORT))
-
+        # build fake node array for testing purposes
+        
         # Three-way Handshake with each TCP Client, build node array
         while self.ecmuSet.getLenNodeList() < self.ecmuSet.getMaxNodes():
             s.listen(1)
@@ -106,6 +107,7 @@ class App(threading.Thread):
         # TODO: insert node buttons
         fpArea = ttk.Notebook(mainArea, width=575, height=425)
         floorPlan = tk.PhotoImage(file='floorplan.png')
+        # infoImage = tk.PhotoImage(file = 'info.png')
         f1 = ttk.Frame(mainArea)
         f2 = ttk.Frame(mainArea)
         f3 = tk.Canvas(mainArea)
@@ -130,6 +132,9 @@ class App(threading.Thread):
         nirLabel = tk.Label(self.currentWindow, text="NIR Fire Detected: ")
         self.nirVar = tk.StringVar(self.currentWindow, value='False')
         nirVarLabel = tk.Label(self.currentWindow, textvariable=self.nirVar)
+
+     
+
 
         # packing / adding the components onto the display
         window.pack(fill="both", expand = False)
@@ -160,6 +165,33 @@ class App(threading.Thread):
         aqVarLabel.grid(in_=controlArea, row=3, column=1)
         nirLabel.grid(in_=controlArea, row=4, column=0, sticky="w")
         nirVarLabel.grid(in_=controlArea, row=4, column=1)
+        
+        
+        #info button stuff
+        node1 = ecmuClass.ecmu(0,0,1)
+        node2 = ecmuClass.ecmu(0,0,2)
+        node3 = ecmuClass.ecmu(0,0,3)
+        node4 = ecmuClass.ecmu(0,0,4)
+        fakeNodes = [node1,node2,node3,node4]
+        infoButton1 = tk.Button(f3, width = 15, height = 15, text = 'i',command = lambda: self.infoChange(fakeNodes,0))
+        infoButton2 = tk.Button(f3, width = 15, height = 15, text = 'i',command =  lambda:self.infoChange(fakeNodes,1))
+        infoButton3 = tk.Button(f3, width = 15, height = 15, text = 'i',command =  lambda:self.infoChange(fakeNodes,2))
+        infoButton4 = tk.Button(f3, width = 15, height = 15, text = 'i',command = lambda: self.infoChange(fakeNodes,3))
+        iB1 = f3.create_window(150,35,width = 15, height =15,window=infoButton1)
+        iB2 = f3.create_window(150,65,width = 15, height =15,window=infoButton2)
+        iB3 = f3.create_window(150,110,width = 15, height =15,window=infoButton3)
+        iB4 = f3.create_window(150,140,width = 15, height =15,window=infoButton4)
+
+
+
+        
+    def infoChange(self,fakeNodes,identifier):
+        temp = fakeNodes[identifier].getTemp()
+        co2 = fakeNodes[identifier].getO2()
+        flame = fakeNodes[identifier].getFlame()
+        idenString = "Node %i" %identifier
+        self.idVar.set(idenString)
+   
 
     def run(self):
         self.root = tk.Tk()
@@ -171,7 +203,7 @@ class App(threading.Thread):
 
         self.root.mainloop()
 
-
+    
 if __name__ == "__main__":
     # begins GUI thread
     app = App()
