@@ -8,7 +8,7 @@ temp_threshold = 35
 ONBOARD_LED = 0
 LED_STRIP   = 1
 DOOR_SERVO  = 2
-
+WATER       = 3
 
 # class to store and work with individual outputs
 class ecmuOutput:
@@ -150,19 +150,36 @@ class ecmuSet:
 
     # add a node to the list of nodes/ID LUT
     def addEcmu(self, conn, addr, identifier):
-        self.nodeIdDict[identifier] = len(self.nodeList)
-        self.nodeList.append(ecmu(conn, addr, identifier))
+        self.nodeIdDict[int(identifier)] = len(self.nodeList)
+        self.nodeList.append(ecmu(conn, addr, int(identifier)))
 
     # collect the node output assignments from a csv and append to outputList
     def collectOutputs(self):
         with open('nodeOutputAssignments.csv', newline='') as csvFile:
             reader = csv.DictReader(csvFile)
             for row in reader:
-                # print(row)
-                for node in self.nodeList:
-                    if (int(row['identifier']) == int(node.getIdentifier())):
-                        # print("found matching ID!")
-                        node.addOutput(int(row['type']), int(row['pin']))
+                if int(row['identifier']) in self.nodeIdDict:
+                    ind = self.nodeIdDict[int(row['identifier'])]
+                    self.nodeList[ind].addOutput(int(row['type']), int(row['pin']))
+                        
+    # get a node based on its ID
+    def getEcmuByID(self, identifier):
+        return self.nodeList[self.nodeIdDict[int(identifier)]]
+
+    # sets all doors to closed (transmit updates the node)
+    def closeAllDoors(self):
+        for node in self.nodeList:
+            for output in node._outputList:
+                if output.getOutputType() is DOOR_SERVO:
+                    output.setCurMsg(0)
+
+    # sets water to 0 == OFF, 1 == ON
+    def setWater(self, state):
+        for node in self.nodeList:
+            for output in node._outputList:
+                if output.getOutputType() is WATER:
+                    output.setCurMsg(state)
+                    break
 
     # receive data from all nodes
     def receive(self):

@@ -8,6 +8,7 @@ import socket
 from time import sleep
 import random
 import ecmuClass
+import csv
 
 TCP_IP = '0.0.0.0'
 TCP_PORT = 5005
@@ -21,6 +22,21 @@ temp_threshold = 35
 
 initiated = 0
 
+# creates a node button given an identifier and location
+class NodeButton:
+    def __init__(self, app, identifier, x, y):
+        self.identifier = identifier
+        self.x          = x
+        self.y          = y
+        self.app        = app
+        infoButton = tk.Button(self.app.f3, width = 25, height = 15, text = str(identifier),command = self.infoChange)
+        self.app.f3.create_window(self.x, self.y, width = 25, height = 15, window = infoButton)
+
+    def infoChange(self):
+        self.app.curNode = int(self.identifier)
+        self.app.updateControlArea()
+
+
 class App(threading.Thread):
 
     def initiateNodes(self):
@@ -32,8 +48,7 @@ class App(threading.Thread):
         # Initialize TCP Server socket
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.bind((TCP_IP, TCP_PORT))
-        # build fake node array for testing purposes
-        
+
         # Three-way Handshake with each TCP Client, build node array
         while self.ecmuSet.getLenNodeList() < self.ecmuSet.getMaxNodes():
             s.listen(1)
@@ -50,6 +65,7 @@ class App(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
         self.start()
+        self.curNode = 0
 
     def callback(self):
         self.root.quit()
@@ -61,13 +77,49 @@ class App(threading.Thread):
     def dispFloorplanCallback(self):
         img = Image.open('Third_Floor_Plan_Large.png')
         img.show()
+    
+    # generates all of the node buttons based on the csv
+    def generateNodeButtons(self):
+        with open('nodeButtons.csv', newline='') as csvFile:
+            reader = csv.DictReader(csvFile)
+            for row in reader:
+                # print(row)
+                NodeButton(self, int(row['identifier']), int(row['x']), int(row['y']))
+    
+    # generates fake nodes for each node button that isn't associated with a real node
+    def generateFakeNodes(self):
+        self.fakeEcmuSet = ecmuClass.ecmuSet(15)
+        with open('nodeButtons.csv', newline='') as csvFile:
+            reader = csv.DictReader(csvFile)
+            for row in reader:
+                try:
+                    if not int(row['identifier']) in self.ecmuSet.nodeIdDict:
+                        self.fakeEcmuSet.addEcmu(0, 0, int(row['identifier']))
+                except:
+                    self.fakeEcmuSet.addEcmu(0, 0, int(row['identifier']))
+    
+    # updates the control area based on which node is curNode
+    def updateControlArea(self):
+        try:
+            node = self.ecmuSet.getEcmuByID(self.curNode)
+            # print("Using real node\r\n")
+        except: 
+            node = self.fakeEcmuSet.getEcmuByID(self.curNode)
+            # print("Using fake node\r\n")
 
+        self.idVar.set("Node " + str(node.getIdentifier()))
+        self.tempVar.set(str(node.getTemp()))
+        self.aqVar.set(str(node.getO2()))
+        self.nirVar.set("False" if node.getFlame() == 0 else "True")
+
+    # helper function for creating each new window
     def createCurrentWindow(self):
         self.currentWindow = tk.Toplevel(self.root)
         self.currentWindow.title("IOT First Responder")
         self.currentWindow.resizable(width = False, height = False)
         self.currentWindow.protocol("WM_DELETE_WINDOW", self.callback)
 
+    # creates all the components of the initWindow
     def createInitWindow(self):
         self.createCurrentWindow()
         localIP = socket.gethostbyname(socket.gethostname())
@@ -82,9 +134,10 @@ class App(threading.Thread):
         nodesEntry.grid(row=1, column=1)
         button.grid(row=2, column=0, columnspan=2)
 
+    # creates all the components of the main window
     def createMainWindow(self):
 
-        # comment out to bypass start (also uncomment the line in run)
+        # comment out to bypass start (also uncomment the line in run below)
         self.initiateNodes()
         self.currentWindow.destroy()
 
@@ -110,9 +163,9 @@ class App(threading.Thread):
         # infoImage = tk.PhotoImage(file = 'info.png')
         f1 = ttk.Frame(mainArea)
         f2 = ttk.Frame(mainArea)
-        f3 = tk.Canvas(mainArea)
-        f3.background = floorPlan
-        bg = f3.create_image(0,0, anchor = tk.NW, image = floorPlan)
+        self.f3 = tk.Canvas(mainArea)
+        self.f3.background = floorPlan
+        bg = self.f3.create_image(0,0, anchor = tk.NW, image = floorPlan)
         f4 = ttk.Frame(mainArea)
         f5 = ttk.Frame(mainArea)
         f6 = ttk.Frame(mainArea)
@@ -133,9 +186,6 @@ class App(threading.Thread):
         self.nirVar = tk.StringVar(self.currentWindow, value='False')
         nirVarLabel = tk.Label(self.currentWindow, textvariable=self.nirVar)
 
-     
-
-
         # packing / adding the components onto the display
         window.pack(fill="both", expand = False)
 
@@ -151,7 +201,7 @@ class App(threading.Thread):
         mainArea.add(fpArea)
         fpArea.add(f1, state='disabled', text='   1 ')
         fpArea.add(f2, state='disabled', text='   2 ')
-        fpArea.add(f3, state='normal', text='   3 ')
+        fpArea.add(self.f3, state='normal', text='   3 ')
         fpArea.add(f4, state='disabled', text='   4 ')
         fpArea.add(f5, state='disabled', text='   5 ')
         fpArea.add(f6, state='disabled', text='   6 ')
@@ -165,34 +215,11 @@ class App(threading.Thread):
         aqVarLabel.grid(in_=controlArea, row=3, column=1)
         nirLabel.grid(in_=controlArea, row=4, column=0, sticky="w")
         nirVarLabel.grid(in_=controlArea, row=4, column=1)
+
+        # create node buttons and other interactive components
+        self.generateFakeNodes()
+        self.generateNodeButtons()
         
-        
-        #info button stuff
-        node1 = ecmuClass.ecmu(0,0,1)
-        node2 = ecmuClass.ecmu(0,0,2)
-        node3 = ecmuClass.ecmu(0,0,3)
-        node4 = ecmuClass.ecmu(0,0,4)
-        fakeNodes = [node1,node2,node3,node4]
-        infoButton1 = tk.Button(f3, width = 15, height = 15, text = 'i',command = lambda: self.infoChange(fakeNodes,0))
-        infoButton2 = tk.Button(f3, width = 15, height = 15, text = 'i',command =  lambda:self.infoChange(fakeNodes,1))
-        infoButton3 = tk.Button(f3, width = 15, height = 15, text = 'i',command =  lambda:self.infoChange(fakeNodes,2))
-        infoButton4 = tk.Button(f3, width = 15, height = 15, text = 'i',command = lambda: self.infoChange(fakeNodes,3))
-        iB1 = f3.create_window(150,35,width = 15, height =15,window=infoButton1)
-        iB2 = f3.create_window(150,65,width = 15, height =15,window=infoButton2)
-        iB3 = f3.create_window(150,110,width = 15, height =15,window=infoButton3)
-        iB4 = f3.create_window(150,140,width = 15, height =15,window=infoButton4)
-
-
-
-        
-    def infoChange(self,fakeNodes,identifier):
-        temp = fakeNodes[identifier].getTemp()
-        co2 = fakeNodes[identifier].getO2()
-        flame = fakeNodes[identifier].getFlame()
-        idenString = "Node %i" %identifier
-        self.idVar.set(idenString)
-   
-
     def run(self):
         self.root = tk.Tk()
         self.root.withdraw()
@@ -203,7 +230,7 @@ class App(threading.Thread):
 
         self.root.mainloop()
 
-    
+
 if __name__ == "__main__":
     # begins GUI thread
     app = App()
@@ -211,20 +238,27 @@ if __name__ == "__main__":
     print('***Welcome to IoT First Responder GUI***')
     while not initiated:
         sleep(1)
-        
+
     app.ecmuSet.collectOutputs()
-    
+
+    # try to display an existing node
+    try:
+        app.curNode = app.ecmuSet.nodeList[0].getIdentifier()
+        app.idVar.set("Node " + str(app.ecmuSet.nodeList[0].getIdentifier()))
+        app.tempVar.set(str(app.ecmuSet.nodeList[0].getTemp()))
+        app.aqVar.set(str(app.ecmuSet.nodeList[0].getO2()))
+        app.nirVar.set("False" if app.ecmuSet.nodeList[0].getFlame() == 0 else "True")
+    except:
+        print("no real nodes found\r\n")
+
     # Loop reading sensor data, displaying sensor data, and sending commands to node.  Break loop with Ctrl-C
     try:
         while True:
             app.ecmuSet.receive()
             app.ecmuSet.analyze()
-            # app.ecmuSet.print()
-            for node in app.ecmuSet.nodeList:
-                app.idVar.set("Node " + str(node.getIdentifier()))
-                app.tempVar.set(str(node.getTemp()))
-                app.aqVar.set(str(node.getO2()))
-                app.nirVar.set("False" if node.getFlame() == 0 else "True")
+            app.ecmuSet.print()
+            
+            app.updateControlArea()
 
             app.ecmuSet.transmit()
             # sleep(1)
