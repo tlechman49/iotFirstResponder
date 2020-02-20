@@ -56,6 +56,9 @@ void reg_led_strip(void);
 int servo(int argc, char **argv);
 void reg_servo(void);
 
+int water(int argc, char **argv);
+void reg_water(void);
+
 #ifdef __cplusplus
 }
 #endif

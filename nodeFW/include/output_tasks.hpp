@@ -25,6 +25,8 @@ int createNewTask(command_s cmd, outTask_s * taskArray);
 
 void TaskOnboardLed(void *pvParameters);
 void TaskLedStrip(void *pvParameters);
+void TaskServo(void *pvParameters);
+void TaskWater(void *pvParameters);
 
 FASTLED_USING_NAMESPACE
 
@@ -45,4 +47,15 @@ class LED
     private:
         int _dir;
         CRGB _leds[NUM_LEDS] = {CRGB::Black};
+};
+
+class SERVO
+{
+    public:
+        SERVO(int pin);
+        void setPosition(int position);
+        int pin;
+        int channel;
+    private:
+        static int _channelCount;
 };

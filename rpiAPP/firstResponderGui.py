@@ -35,7 +35,27 @@ class NodeButton:
     def infoChange(self):
         self.app.curNode = int(self.identifier)
         self.app.updateControlArea()
+        
+# creates a door button given a node id, pin, and location
+class DoorButton:
+    def __init__(self, app, identifier, pin, x, y):
+        self.identifier = identifier
+        self.pin        = pin
+        self.x          = x
+        self.y          = y
+        self.app        = app
+        self.state      = False
+        self.doorText   = tk.StringVar(self.app.currentWindow, value="|")
+        infoButton = tk.Button(self.app.f3, width = 10, height = 15, textvariable = self.doorText, command = self.infoChange)
+        self.object = self.app.f3.create_window(self.x, self.y, width = 10, height = 15, window = infoButton)
 
+    def infoChange(self):
+        self.state = not self.state
+        self.doorText.set("/" if self.state else "|")
+        try:
+            self.app.ecmuSet.setOutputMsg(self.identifier, self.pin, ecmuClass.DOOR_SERVO, self.state)
+        except: 
+            self.app.fakeEcmuSet.setOutputMsg(self.identifier, self.pin, ecmuClass.DOOR_SERVO, self.state)
 
 class App(threading.Thread):
 
@@ -97,6 +117,14 @@ class App(threading.Thread):
                         self.fakeEcmuSet.addEcmu(0, 0, int(row['identifier']))
                 except:
                     self.fakeEcmuSet.addEcmu(0, 0, int(row['identifier']))
+                    
+    # generates all of the door buttons based on the csv
+    def generateDoorButtons(self):
+        with open('doorButtons.csv', newline='') as csvFile:
+            reader = csv.DictReader(csvFile)
+            for row in reader:
+                # print(row)
+                DoorButton(self, int(row['identifier']), int(row['pin']), int(row['x']), int(row['y']))
     
     # updates the control area based on which node is curNode
     def updateControlArea(self):
@@ -219,6 +247,7 @@ class App(threading.Thread):
         # create node buttons and other interactive components
         self.generateFakeNodes()
         self.generateNodeButtons()
+        self.generateDoorButtons()
         
     def run(self):
         self.root = tk.Tk()

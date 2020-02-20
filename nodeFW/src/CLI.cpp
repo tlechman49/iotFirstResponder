@@ -57,7 +57,7 @@ void initialize_console()
 #if CONFIG_LOG_COLORS
         console_config.hint_color = atoi(LOG_COLOR_CYAN)
 #endif
-    
+
     ESP_ERROR_CHECK( esp_console_init(&console_config) );
 
     /* Configure linenoise line completion library */
@@ -81,7 +81,7 @@ void initialize_console()
     register_commands();
 }
 
-// The task function for the CLI. 
+// The task function for the CLI.
 // This task should run continuously at a low priority in order to process requests as they come
 void TaskCLI(void *pvParameters) // This is a task.
 {
@@ -177,13 +177,14 @@ void register_commands()
     reg_onboard_led();
     reg_led_strip();
     reg_servo();
+    reg_water();
 }
 
 // Example command get_foo
 int get_foo(int argc, char **argv)
 {
     // we use printf to print to serial because of the extra functionality provided by the IDF
-    printf("bar\r\n"); 
+    printf("bar\r\n");
     return 0; // 0 = SUCCESS, 1 = FAILURE
 }
 
@@ -221,7 +222,7 @@ int digital_read(int argc, char **argv)
         {
             pinMode(pinNum, INPUT);
             val = digitalRead(pinNum);
-            printf("Pin %d = %d\r\n", pinNum, val); 
+            printf("Pin %d = %d\r\n", pinNum, val);
             return 0; // 0 = SUCCESS, 1 = FAILURE
         }
     }
@@ -290,7 +291,7 @@ int analog_read(int argc, char **argv)
         {
             pinMode(pinNum, INPUT);
             val = analogRead(pinNum);
-            printf("Pin %d = %d\r\n", pinNum, val); 
+            printf("Pin %d = %d\r\n", pinNum, val);
             return 0; // 0 = SUCCESS, 1 = FAILURE
         }
     }
@@ -340,7 +341,7 @@ int digital_write(int argc, char **argv)
             {
                 pinMode(pinNum, OUTPUT);
                 digitalWrite(pinNum, set);
-                printf("Pin %d set to %d\r\n", pinNum, set); 
+                printf("Pin %d set to %d\r\n", pinNum, set);
                 return 0; // 0 = SUCCESS, 1 = FAILURE
             }
             else
@@ -348,7 +349,7 @@ int digital_write(int argc, char **argv)
                 printf("Invalid set number\r\n");
                 return 1;
             }
-            
+
         }
     }
     printf("Invalid pin number\r\n");
@@ -362,7 +363,7 @@ void reg_digital_write(void)
 {
     d_write_args.pin_num =
         arg_int1("p", "pin", "[4 12 13 14 15 21 25 26 27 32 33]", "Write pin with given number");
-    d_write_args.pin_set = 
+    d_write_args.pin_set =
         arg_int1("s", "set", "<0|1>", "Sets the pin to a given level");
     d_write_args.end = arg_end(2);
 
@@ -386,7 +387,7 @@ struct {
 int analog_write(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **) &a_write_args);
-    if (nerrors != 0) 
+    if (nerrors != 0)
     {
         arg_print_errors(stderr, a_write_args.end, argv[0]);
         return 1;
@@ -399,16 +400,16 @@ int analog_write(int argc, char **argv)
         {
             pinMode(pinNum, OUTPUT);
             dacWrite(pinNum, set);
-            printf("Pin %d set to %d\r\n", pinNum, set); 
+            printf("Pin %d set to %d\r\n", pinNum, set);
             return 0; // 0 = SUCCESS, 1 = FAILURE
         }
-        else 
+        else
         {
             printf("Invalid set number\r\n");
             return 1;
         }
     }
-    else 
+    else
     {
         printf("Invalid pin number\r\n");
         return 1;
@@ -420,7 +421,7 @@ void reg_analog_write(void)
 {
     a_write_args.pin_num =
         arg_int1("p", "pin", "25|26", "Write pin with given number");
-    a_write_args.pin_set = 
+    a_write_args.pin_set =
         arg_int1("s", "set", "<0:255>", "Sets the pin to a given level");
     a_write_args.end = arg_end(2);
 
@@ -452,7 +453,7 @@ struct {
 int wifi(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **) &wifi_args);
-    if (nerrors != 0) 
+    if (nerrors != 0)
     {
         arg_print_errors(stderr, wifi_args.end, argv[0]);
         return 1;
@@ -461,7 +462,7 @@ int wifi(int argc, char **argv)
     uint32_t ulNotifiedValue;
     int u8RetVal = 0;
 
-    // changes static ssid 
+    // changes static ssid
     if (wifi_args.ssid->count)
     {
         char ssid[32];
@@ -551,15 +552,15 @@ void reg_wifi(void)
         arg_lit0("c", "connect", "Connect to First Responder IoT network");
     wifi_args.ip =
         arg_lit0("i", "print_ip", "Print IP address");
-    wifi_args.staticIp = 
+    wifi_args.staticIp =
         arg_lit0("a", "static_ip", "Sets the IP to static");
-    wifi_args.tcpClient = 
+    wifi_args.tcpClient =
         arg_lit0("e", "establish_tcp", "Establish TCP connection with the TCP Server");
-    wifi_args.transmit = 
+    wifi_args.transmit =
         arg_lit0("t", "tcp_transmit", "Transmit data to TCP Server");
-    wifi_args.write = 
+    wifi_args.write =
         arg_str0("w", "write_message", "<message>", "Write message to be sent over TCP");
-    wifi_args.receive = 
+    wifi_args.receive =
         arg_lit0("r", "tcp_receive", "Receive data from TCP Server");
     wifi_args.display =
         arg_lit0("d", "display_message", "Display message read over TCP");
@@ -589,7 +590,7 @@ int cli_get_temp(int argc, char **argv)
     {
         return 1;
     }
-    
+
 }
 
 // register get temperature to the cli
@@ -617,7 +618,7 @@ struct {
 int cli_get_co2(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **) &co2_args);
-    if (nerrors != 0) 
+    if (nerrors != 0)
     {
         arg_print_errors(stderr, co2_args.end, argv[0]);
         return 1;
@@ -678,7 +679,7 @@ int cli_get_flame(int argc, char **argv)
     {
         return 1;
     }
-    
+
 }
 
 // register get flame to the cli
@@ -702,7 +703,7 @@ struct {
 int cli_demo(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **) &demo_args);
-    if (nerrors != 0) 
+    if (nerrors != 0)
     {
         arg_print_errors(stderr, demo_args.end, argv[0]);
         return 1;
@@ -714,7 +715,7 @@ int cli_demo(int argc, char **argv)
     {
         xTaskNotify( taskHandleSensor, 0x01, eSetBits );
     }
-    else 
+    else
     {
         xTaskNotify( taskHandleSensor, 0x00, eSetBits );
     }
@@ -728,7 +729,7 @@ void reg_demo(void)
     demo_args.wireless =
         arg_lit0("w", "wireless", "Send tcp data with fake sensor data");
     demo_args.end = arg_end(1);
-    
+
     const esp_console_cmd_t cmd = {
         .command = "demo",
         .help = "**Must connect to TCP server first** Puts the device in demo mode to send sensor data automatically",
@@ -748,7 +749,7 @@ struct {
 int onboard_led(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **) &onboard_led_args);
-    if (nerrors != 0) 
+    if (nerrors != 0)
     {
         arg_print_errors(stderr, onboard_led_args.end, argv[0]);
         return 1;
@@ -788,7 +789,7 @@ struct {
 int led_strip(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **) &led_strip_args);
-    if (nerrors != 0) 
+    if (nerrors != 0)
     {
         arg_print_errors(stderr, led_strip_args.end, argv[0]);
         return 1;
@@ -805,8 +806,8 @@ int led_strip(int argc, char **argv)
 // register led strip to the cli
 void reg_led_strip(void)
 {
-    led_strip_args.dir_set = 
-        arg_int1("s", "dir", "<0|1|2>", "Sets the direction <off|away from port|toward port>");
+    led_strip_args.dir_set =
+        arg_int1("d", "dir", "<0|1|2>", "Sets the direction <off|away from port|toward port>");
     led_strip_args.end = arg_end(1);
 
     const esp_console_cmd_t cmd = {
@@ -819,7 +820,8 @@ void reg_led_strip(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }
 
-struct {
+struct
+{
     struct arg_int *dir_set;
     struct arg_end *end;
 } servo_args;
@@ -827,40 +829,26 @@ struct {
 // Open or close servo 1 single servo. 0 or 180 degrees.
 int servo(int argc, char **argv)
 {
-    int nerrors = arg_parse(argc, argv, (void **) &servo_args);
-    if (nerrors != 0) {
-       arg_print_errors(stderr, servo_args.end, argv[0]);
-       return 1;
+    int nerrors = arg_parse(argc, argv, (void **)&servo_args);
+    if (nerrors != 0)
+    {
+        arg_print_errors(stderr, servo_args.end, argv[0]);
+        return 1;
     }
-    ledcSetup(0, 50, 11);
-    ledcAttachPin(21, 0);
 
-    uint32_t position = 0;
-    position = (uint32_t)servo_args.dir_set->ival[0];
-    if (position == 0 || position == 1){
-        if (position == 0){
-           printf("*Servo pans to position 0*");
-           ledcWrite(0, 51);
-           return 0;
-        }
-        if (position == 1){
-           printf("*Servo pans to position 1*");
-           ledcWrite(0, 220);
-           return 0;
-       }
-    } else {
-        printf("Not a valid position. Choose either 0 or 1.");
-    };
+    uint32_t position = (uint32_t)servo_args.dir_set->ival[0];
+    printf("Setting servo to position: %d\r\n", position);
+    sprintf(wifi_task::_readMessage, "2.12.%u", position);
 
-    sprintf(wifi_task::_readMessage, "1.21.%u", position);
     xTaskNotify( taskHandleOutputManager, 0, eSetValueWithOverwrite );
+
     return 0;
 }
 
 // register servo to the cli
 void reg_servo(void)
 {
-    servo_args.dir_set = arg_int1("s", "dir", "<0|1>", "Sets the direction at 0 or 90 degrees");
+    servo_args.dir_set = arg_int1("d", "dir", "<0|1>", "Sets the direction at 0 or 90 degrees");
     servo_args.end = arg_end(1);
 
     const esp_console_cmd_t cmd = {
@@ -870,5 +858,45 @@ void reg_servo(void)
         .func = &servo,
         .argtable = &servo_args,
     };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
+}
+
+struct
+{
+    struct arg_int *set;
+    struct arg_end *end;
+} water_args;
+
+// Run the water
+int water(int argc, char **argv)
+{
+    int nerrors = arg_parse(argc, argv, (void **)&water_args);
+    if (nerrors != 0)
+    {
+        arg_print_errors(stderr, water_args.end, argv[0]);
+        return 1;
+    }
+
+    uint32_t set = (uint32_t)water_args.set->ival[0];
+    printf("Setting water to: %d\r\n", set);
+    sprintf(wifi_task::_readMessage, "3.12.%u", set);
+
+    xTaskNotify( taskHandleOutputManager, 0, eSetValueWithOverwrite );
+    return 0;
+}
+
+// register servo to the cli
+void reg_water(void)
+{
+    water_args.set = arg_int1("s", "set", "<0|1>", "Sets the water to off or on");
+    water_args.end = arg_end(1);
+
+    const esp_console_cmd_t cmd = {
+        .command = "water",
+        .help = "Run the water with: water -s 1",
+        .hint = NULL,
+        .func = &water,
+        .argtable = &water_args,
+    };
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
 }

@@ -20,6 +20,9 @@ class ecmuOutput:
 
     def getOutputType(self):
         return self._outputType
+    
+    def getPin(self):
+        return self._pin
 
     def getCurMsg(self):
         return self._curMsg
@@ -161,6 +164,14 @@ class ecmuSet:
                 if int(row['identifier']) in self.nodeIdDict:
                     ind = self.nodeIdDict[int(row['identifier'])]
                     self.nodeList[ind].addOutput(int(row['type']), int(row['pin']))
+                    
+    def setOutputMsg(self, identifier, pin, outputType, msg):
+        if identifier in self.nodeIdDict:
+            ind = self.nodeIdDict[identifier]
+            for output in self.nodeList[ind]._outputList:
+                if (output.getPin() is pin) and (output.getOutputType() is outputType):
+                    output.setCurMsg(int(msg))
+                    break
                         
     # get a node based on its ID
     def getEcmuByID(self, identifier):
