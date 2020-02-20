@@ -54,6 +54,7 @@ class DoorButton:
         self.doorText.set("/" if self.state else "|")
         try:
             self.app.ecmuSet.setOutputMsg(self.identifier, self.pin, ecmuClass.DOOR_SERVO, self.state)
+            self.app.ecmuSet.transmit()
         except: 
             self.app.fakeEcmuSet.setOutputMsg(self.identifier, self.pin, ecmuClass.DOOR_SERVO, self.state)
 
