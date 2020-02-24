@@ -22,7 +22,7 @@ IPAddress static_ip(192,168,1,12);
 const IPAddress gateway(192,168,1,1);
 const IPAddress subnet(255,255,255,0);
 
-IPAddress wifi_task::host_ip(192,168,86,76); 
+IPAddress wifi_task::host_ip(192,168,1,1); 
 #define TCP_PORT 5005
 
 WiFiClient wifi_task::client;
@@ -150,8 +150,8 @@ void TaskTcpReceive(void *pvParameters)
 }
 
 wifi_task::wifi_task(){
-    strcpy(_ssid, "mrwifi");
-    strcpy(_pwd, "Bananas321");
+    strcpy(_ssid, "FirstResponderNet");
+    strcpy(_pwd, "iotfrpass");
 
     strcpy(_readMessage, "");
     strcpy(_writeMessage, "");
