@@ -10,6 +10,8 @@ LED_STRIP   = 1
 DOOR_SERVO  = 2
 WATER       = 3
 
+MAX_CMD_LEN = 32
+
 # class to store and work with individual outputs
 class ecmuOutput:
     def __init__(self, outputType, pin):
@@ -99,6 +101,9 @@ class ecmu:
         command = ""
         for output in self._outputList:
             if output.isNewMsg():
+                if len(separator.join([command, output.getString()])) > MAX_CMD_LEN:
+                    self._conn.send(command.encode())
+                    command = ""
                 command = separator.join([command, output.getString()]) # append to the command string
                 output.setCurMsg(output.getCurMsg())                    # this ensures we dont resend the same command
                 separator = ","                                         # set the separator (important for first run)
