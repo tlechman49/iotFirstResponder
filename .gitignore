@@ -5,3 +5,4 @@
 .vscode/ipch
 .vscode/
 *.code-workspace
+rpiAPP/__pycache__/ecmuClass.cpython-38.pyc
