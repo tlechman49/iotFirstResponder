@@ -17,8 +17,8 @@ class ecmuOutput:
     def __init__(self, outputType, pin):
         self._outputType = outputType
         self._pin = pin
-        self._curMsg = 0
-        self._lastMsg = 0
+        self._curMsg = -1
+        self._lastMsg = -1
 
     def getOutputType(self):
         return self._outputType

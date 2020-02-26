@@ -48,6 +48,7 @@ class DoorButton:
         self.doorText   = tk.StringVar(self.app.currentWindow, value="|")
         infoButton = tk.Button(self.app.f3, width = 10, height = 15, textvariable = self.doorText, command = self.infoChange)
         self.object = self.app.f3.create_window(self.x, self.y, width = 10, height = 15, window = infoButton)
+        self.app.ecmuSet.setOutputMsg(self.identifier, self.pin, ecmuClass.DOOR_SERVO, self.state)
 
     def infoChange(self):
         self.state = not self.state
@@ -57,6 +58,26 @@ class DoorButton:
             self.app.ecmuSet.transmit()
         except: 
             self.app.fakeEcmuSet.setOutputMsg(self.identifier, self.pin, ecmuClass.DOOR_SERVO, self.state)
+            
+class WaterButton:
+    def __init__(self, app, x, y):
+        self.x          = x
+        self.y          = y
+        self.app        = app
+        self.state      = False
+        self.waterText   = tk.StringVar(self.app.currentWindow, value="Water: Off")
+        infoButton = tk.Button(self.app.f3, width = 75, height = 15, textvariable = self.waterText, command = self.infoChange)
+        self.object = self.app.f3.create_window(self.x, self.y, width = 75, height = 15, window = infoButton)
+        self.app.ecmuSet.setWater(int(self.state))
+        
+    def infoChange(self):
+        self.state = not self.state
+        self.waterText.set("Water: On" if self.state else "Water: Off")
+        try:
+            self.app.ecmuSet.setWater(int(self.state))
+            self.app.ecmuSet.transmit()
+        except: 
+            self.app.ecmuSet.setWater(int(self.state))
 
 class App(threading.Thread):
 
@@ -105,7 +126,7 @@ class App(threading.Thread):
             reader = csv.DictReader(csvFile)
             for row in reader:
                 # print(row)
-                NodeButton(self, int(row['identifier']), int(row['x']), int(row['y']))
+                NodeButton(self, int(row['identifier']), int(row['x']), int(row['y']))    
     
     # generates fake nodes for each node button that isn't associated with a real node
     def generateFakeNodes(self):
@@ -119,14 +140,18 @@ class App(threading.Thread):
                 except:
                     self.fakeEcmuSet.addEcmu(0, 0, int(row['identifier']))
                     
-    # generates all of the door buttons based on the csv
+    # generates all of the door buttons based on the csv, places them all in default zero
     def generateDoorButtons(self):
         with open('doorButtons.csv', newline='') as csvFile:
             reader = csv.DictReader(csvFile)
             for row in reader:
                 # print(row)
                 DoorButton(self, int(row['identifier']), int(row['pin']), int(row['x']), int(row['y']))
-    
+        
+    # generates the button for the water works, places them all in default zero
+    def generateWaterButton(self):
+        WaterButton(self, 240, 50) # x,y location should put it near where the water reservoir is placed
+
     # updates the control area based on which node is curNode
     def updateControlArea(self):
         try:
@@ -249,6 +274,8 @@ class App(threading.Thread):
         self.generateFakeNodes()
         self.generateNodeButtons()
         self.generateDoorButtons()
+        self.generateWaterButton()
+        self.ecmuSet.transmit()
         
     def run(self):
         self.root = tk.Tk()
